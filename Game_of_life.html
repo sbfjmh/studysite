@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>康威生命游戏</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #2a3a7c);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            background: linear-gradient(90deg, #00c6ff, #0072ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .description {
+            max-width: 800px;
+            margin: 0 auto 20px;
+            line-height: 1.6;
+            text-align: center;
+            color: #c0c0ff;
+        }
+        
+        .game-area {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            width: 100%;
+        }
+        
+        .game-container {
+            flex: 1;
+            min-width: 300px;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        #gameCanvas {
+            background-color: #0f1a3d;
+            border: 2px solid #4a6fe3;
+            border-radius: 5px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+        }
+        
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+            justify-content: center;
+            width: 100%;
+        }
+        
+        button {
+            padding: 10px 15px;
+            background: linear-gradient(135deg, #4a6fe3, #3a5bd0);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            box-shadow: 0 3px 5px rgba(0,0,0,0.2);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 8px rgba(0,0,0,0.3);
+            background: linear-gradient(135deg, #5a7ff3, #4a6be0);
+        }
+        
+        button:active {
+            transform: translateY(1px);
+        }
+        
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            margin-top: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #4a6fe3;
+        }
+        
+        .info-panel {
+            flex: 1;
+            min-width: 300px;
+            max-width: 350px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #4a6fe3;
+        }
+        
+        h2 {
+            margin-bottom: 15px;
+            color: #4a6fe3;
+            border-bottom: 1px solid #4a6fe3;
+            padding-bottom: 5px;
+        }
+        
+        .rules {
+            margin-bottom: 20px;
+        }
+        
+        .rule {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: flex-start;
+        }
+        
+        .rule-bullet {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            background: #4a6fe3;
+            border-radius: 50%;
+            margin-right: 10px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        
+        .patterns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .pattern-btn {
+            padding: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        input[type="range"] {
+            flex: 1;
+        }
+        
+        footer {
+            margin-top: 30px;
+            text-align: center;
+            color: #8899cc;
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 768px) {
+            .game-area {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .info-panel {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>康威生命游戏</h1>
+            <p class="description">康威生命游戏是一个零玩家游戏，它的演变由初始状态决定。你可以创建初始配置，然后观察它们如何演化。</p>
+        </header>
+        
+        <div class="game-area">
+            <div class="game-container">
+                <canvas id="gameCanvas" width="600" height="400"></canvas>
+                
+                <div class="controls">
+                    <button id="startBtn">开始</button>
+                    <button id="pauseBtn" disabled>暂停</button>
+                    <button id="clearBtn">清除</button>
+                    <button id="randomBtn">随机生成</button>
+                    <button id="stepBtn">单步执行</button>
+                </div>
+                
+                <div class="speed-control">
+                    <span>速度:</span>
+                    <input type="range" id="speedSlider" min="1" max="20" value="10">
+                    <span id="speedValue">中</span>
+                </div>
+                
+                <div class="stats">
+                    <div class="stat-item">
+                        <div class="stat-label">代数</div>
+                        <div id="generationCount" class="stat-value">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">存活细胞</div>
+                        <div id="liveCellsCount" class="stat-value">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">状态</div>
+                        <div id="gameStatus" class="stat-value">已暂停</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="info-panel">
+                <div class="rules">
+                    <h2>游戏规则</h2>
+                    <div class="rule">
+                        <div class="rule-bullet"></div>
+                        <div>如果一个活细胞周围有2或3个活细胞，它会继续存活。</div>
+                    </div>
+                    <div class="rule">
+                        <div class="rule-bullet"></div>
+                        <div>如果一个死细胞周围恰好有3个活细胞，它会复活。</div>
+                    </div>
+                    <div class="rule">
+                        <div class="rule-bullet"></div>
+                        <div>如果一个活细胞周围活细胞少于2个，它会因孤独而死。</div>
+                    </div>
+                    <div class="rule">
+                        <div class="rule-bullet"></div>
+                        <div>如果一个活细胞周围活细胞超过3个，它会因拥挤而死。</div>
+                    </div>
+                </div>
+                
+                <div class="patterns">
+                    <h2 style="grid-column: 1 / -1;">预设模式</h2>
+                    <button class="pattern-btn" data-pattern="glider">滑翔机</button>
+                    <button class="pattern-btn" data-pattern="blinker">信号灯</button>
+                    <button class="pattern-btn" data-pattern="gliderGun">滑翔机枪</button>
+                    <button class="pattern-btn" data-pattern="pulsar">脉冲星</button>
+                </div>
+                
+                <div style="margin-top: 20px;">
+                    <h2>操作说明</h2>
+                    <p>• 点击网格切换细胞状态（生/死）</p>
+                    <p>• 使用控制按钮开始、暂停或单步执行</p>
+                    <p>• 尝试不同的预设模式观察演化</p>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>康威生命游戏 | 由HTML、CSS和JavaScript实现</p>
+        </footer>
+    </div>
+
+    <script>
+        // 游戏主要变量
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const cellSize = 10;
+        const gridWidth = Math.floor(canvas.width / cellSize);
+        const gridHeight = Math.floor(canvas.height / cellSize);
+        
+        let grid = createGrid();
+        let nextGrid = createGrid();
+        let isRunning = false;
+        let generation = 0;
+        let animationId = null;
+        let speed = 10; // 帧间隔（毫秒）
+        
+        // DOM元素
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const randomBtn = document.getElementById('randomBtn');
+        const stepBtn = document.getElementById('stepBtn');
+        const generationCount = document.getElementById('generationCount');
+        const liveCellsCount = document.getElementById('liveCellsCount');
+        const gameStatus = document.getElementById('gameStatus');
+        const speedSlider = document.getElementById('speedSlider');
+        const speedValue = document.getElementById('speedValue');
+        const patternButtons = document.querySelectorAll('.pattern-btn');
+        
+        // 初始化网格
+        function createGrid() {
+            return Array(gridHeight).fill().map(() => Array(gridWidth).fill(0));
+        }
+        
+        // 绘制网格
+        function drawGrid() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制背景网格线
+            ctx.strokeStyle = '#1e3a8a';
+            ctx.lineWidth = 0.5;
+            
+            for (let x = 0; x <= canvas.width; x += cellSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            
+            for (let y = 0; y <= canvas.height; y += cellSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+            
+            // 绘制活细胞
+            ctx.fillStyle = '#4a6fe3';
+            let liveCount = 0;
+            
+            for (let y = 0; y < gridHeight; y++) {
+                for (let x = 0; x < gridWidth; x++) {
+                    if (grid[y][x] === 1) {
+                        ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                        liveCount++;
+                    }
+                }
+            }
+            
+            // 更新统计信息
+            generationCount.textContent = generation;
+            liveCellsCount.textContent = liveCount;
+        }
+        
+        // 计算下一代
+        function nextGeneration() {
+            // 复制当前网格到下一代网格
+            for (let y = 0; y < gridHeight; y++) {
+                for (let x = 0; x < gridWidth; x++) {
+                    nextGrid[y][x] = grid[y][x];
+                }
+            }
+            
+            // 应用游戏规则
+            for (let y = 0; y < gridHeight; y++) {
+                for (let x = 0; x < gridWidth; x++) {
+                    const neighbors = countNeighbors(x, y);
+                    
+                    if (grid[y][x] === 1) {
+                        // 活细胞规则
+                        if (neighbors < 2 || neighbors > 3) {
+                            nextGrid[y][x] = 0; // 死亡
+                        }
+                    } else {
+                        // 死细胞规则
+                        if (neighbors === 3) {
+                            nextGrid[y][x] = 1; // 复活
+                        }
+                    }
+                }
+            }
+            
+            // 交换网格
+            [grid, nextGrid] = [nextGrid, grid];
+            generation++;
+        }
+        
+        // 计算周围活细胞数量
+        function countNeighbors(x, y) {
+            let count = 0;
+            for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                    if (dx === 0 && dy === 0) continue;
+                    
+                    const nx = (x + dx + gridWidth) % gridWidth;
+                    const ny = (y + dy + gridHeight) % gridHeight;
+                    
+                    count += grid[ny][nx];
+                }
+            }
+            return count;
+        }
+        
+        // 游戏循环
+        function gameLoop() {
+            nextGeneration();
+            drawGrid();
+            
+            if (isRunning) {
+                animationId = setTimeout(gameLoop, speed);
+            }
+        }
+        
+        // 开始游戏
+        function startGame() {
+            if (!isRunning) {
+                isRunning = true;
+                gameStatus.textContent = '运行中';
+                startBtn.disabled = true;
+                pauseBtn.disabled = false;
+                gameLoop();
+            }
+        }
+        
+        // 暂停游戏
+        function pauseGame() {
+            if (isRunning) {
+                isRunning = false;
+                gameStatus.textContent = '已暂停';
+                startBtn.disabled = false;
+                pauseBtn.disabled = true;
+                clearTimeout(animationId);
+            }
+        }
+        
+        // 清除网格
+        function clearGrid() {
+            pauseGame();
+            grid = createGrid();
+            generation = 0;
+            drawGrid();
+        }
+        
+        // 随机生成细胞
+        function randomGrid() {
+            pauseGame();
+            grid = createGrid();
+            
+            for (let y = 0; y < gridHeight; y++) {
+                for (let x = 0; x < gridWidth; x++) {
+                    grid[y][x] = Math.random() < 0.2 ? 1 : 0;
+                }
+            }
+            
+            generation = 0;
+            drawGrid();
+        }
+        
+        // 单步执行
+        function step() {
+            pauseGame();
+            nextGeneration();
+            drawGrid();
+        }
+        
+        // 处理画布点击
+        function handleCanvasClick(event) {
+            if (isRunning) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((event.clientX - rect.left) / cellSize);
+            const y = Math.floor((event.clientY - rect.top) / cellSize);
+            
+            if (x >= 0 && x < gridWidth && y >= 0 && y < gridHeight) {
+                grid[y][x] = grid[y][x] === 0 ? 1 : 0;
+                drawGrid();
+            }
+        }
+        
+        // 设置预设模式
+        function setPattern(pattern) {
+            pauseGame();
+            clearGrid();
+            
+            const centerX = Math.floor(gridWidth / 2);
+            const centerY = Math.floor(gridHeight / 2);
+            
+            switch(pattern) {
+                case 'glider':
+                    // 滑翔机
+                    grid[centerY][centerX+1] = 1;
+                    grid[centerY+1][centerX+2] = 1;
+                    grid[centerY+2][centerX] = 1;
+                    grid[centerY+2][centerX+1] = 1;
+                    grid[centerY+2][centerX+2] = 1;
+                    break;
+                    
+                case 'blinker':
+                    // 信号灯
+                    grid[centerY][centerX-1] = 1;
+                    grid[centerY][centerX] = 1;
+                    grid[centerY][centerX+1] = 1;
+                    break;
+                    
+                case 'gliderGun':
+                    // 滑翔机枪 (简化版)
+                    const gun = [
+                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
+                        [0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
+                        [1,1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                        [1,1,0,0,0,0,0,0,0,0,1,0,0,0,1,0,1,1,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                    ];
+                    
+                    const startX = centerX - 18;
+                    const startY = centerY - 4;
+                    
+                    for (let y = 0; y < gun.length; y++) {
+                        for (let x = 0; x < gun[y].length; x++) {
+                            if (startY + y >= 0 && startY + y < gridHeight && 
+                                startX + x >= 0 && startX + x < gridWidth) {
+                                grid[startY + y][startX + x] = gun[y][x];
+                            }
+                        }
+                    }
+                    break;
+                    
+                case 'pulsar':
+                    // 脉冲星
+                    const pulsarCoords = [
+                        [2,0], [3,0], [4,0], [8,0], [9,0], [10,0],
+                        [0,2], [0,3], [0,4], [0,8], [0,9], [0,10],
+                        [2,5], [3,5], [4,5], [8,5], [9,5], [10,5],
+                        [5,2], [5,3], [5,4], [5,8], [5,9], [5,10],
+                        [2,7], [3,7], [4,7], [8,7], [9,7], [10,7],
+                        [7,2], [7,3], [7,4], [7,8], [7,9], [7,10],
+                        [2,12], [3,12], [4,12], [8,12], [9,12], [10,12],
+                        [12,2], [12,3], [12,4], [12,8], [12,9], [12,10],
+                        [2,10], [3,10], [4,10], [8,10], [9,10], [10,10],
+                        [10,2], [10,3], [10,4], [10,8], [10,9], [10,10]
+                    ];
+                    
+                    pulsarCoords.forEach(coord => {
+                        const x = centerX + coord[0] - 6;
+                        const y = centerY + coord[1] - 6;
+                        if (x >= 0 && x < gridWidth && y >= 0 && y < gridHeight) {
+                            grid[y][x] = 1;
+                        }
+                    });
+                    break;
+            }
+            
+            drawGrid();
+        }
+        
+        // 更新速度显示
+        function updateSpeedDisplay() {
+            speed = 210 - (speedSlider.value * 10);
+            
+            if (speedSlider.value < 5) {
+                speedValue.textContent = '慢';
+            } else if (speedSlider.value < 15) {
+                speedValue.textContent = '中';
+            } else {
+                speedValue.textContent = '快';
+            }
+            
+            // 如果游戏正在运行，重新设置定时器
+            if (isRunning) {
+                clearTimeout(animationId);
+                animationId = setTimeout(gameLoop, speed);
+            }
+        }
+        
+        // 事件监听
+        startBtn.addEventListener('click', startGame);
+        pauseBtn.addEventListener('click', pauseGame);
+        clearBtn.addEventListener('click', clearGrid);
+        randomBtn.addEventListener('click', randomGrid);
+        stepBtn.addEventListener('click', step);
+        canvas.addEventListener('click', handleCanvasClick);
+        speedSlider.addEventListener('input', updateSpeedDisplay);
+        
+        patternButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                setPattern(button.getAttribute('data-pattern'));
+            });
+        });
+        
+        // 初始化游戏
+        drawGrid();
+    </script>
+</body>
+</html>
