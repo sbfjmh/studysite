@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>学习益生-排版（含滚动开关）</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    /* ===== 全局重置 ===== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #f5f0eb;
+      color: #1e2b26;
+      padding: 20px;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .app {
+      max-width: 1720px;
+      width: 100%;
+      height: 94vh;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      background: rgba(255, 252, 248, 0.75);
+      backdrop-filter: blur(8px);
+      border-radius: 28px;
+      border: 1px solid rgba(210, 200, 190, 0.4);
+      padding: 20px 24px 24px;
+      box-shadow: 0 20px 60px rgba(40, 30, 20, 0.08);
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(200, 190, 180, 0.3);
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .logo-area {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .logo {
+      height: 34px;
+      width: auto;
+    }
+    .logo-text {
+      font-size: 20px;
+      font-weight: 700;
+      color: #2f3e37;
+      letter-spacing: -0.5px;
+    }
+    .logo-text span {
+      color: #b87c5a;
+    }
+    .header-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .btn-primary {
+      background: #e6d9cd;
+      border: 1px solid #d6c4b6;
+      padding: 8px 20px;
+      border-radius: 40px;
+      font-weight: 600;
+      font-size: 14px;
+      color: #5f4d3c;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(180, 140, 110, 0.1);
+      transition: 0.15s;
+      white-space: nowrap;
+    }
+    .btn-primary:hover {
+      background: #dccfc2;
+      box-shadow: 0 6px 16px rgba(180, 140, 110, 0.2);
+    }
+    .btn-primary:active {
+      transform: scale(0.97);
+    }
+    .btn-danger {
+      background: #f5e4de;
+      border-color: #e6cbc1;
+      color: #9a5a4a;
+    }
+    .btn-danger:hover {
+      background: #f0d6ce;
+    }
+    .btn-reset {
+      background: #e0e0e0;
+      border-color: #ccc;
+      color: #555;
+    }
+    .btn-reset:hover {
+      background: #d5d5d5;
+    }
+
+    /* ===== 三栏 ===== */
+    .columns {
+      display: flex;
+      flex: 1;
+      gap: 18px;
+      min-height: 0;
+    }
+    .col {
+      background: rgba(255, 252, 248, 0.6);
+      backdrop-filter: blur(4px);
+      border-radius: 24px;
+      border: 1px solid rgba(210, 200, 190, 0.35);
+      padding: 18px 16px;
+      overflow-y: auto;
+      box-shadow: 0 8px 28px rgba(60, 50, 40, 0.04);
+    }
+    .col-left {
+      flex: 0 0 34%;
+      min-width: 260px;
+      display: flex;
+      flex-direction: column;
+    }
+    .col-middle {
+      flex: 1;
+      background: #fcf9f5;
+      overflow-y: auto;
+      position: relative; /* 为开关定位提供参考 */
+    }
+    .col-right {
+      flex: 0 0 30%;
+      min-width: 220px;
+    }
+
+    /* ===== 工具栏 ===== */
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 8px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(200, 190, 180, 0.3);
+      margin-bottom: 12px;
+    }
+    .tool-btn {
+      background: white;
+      border: 1px solid #e0d8d0;
+      border-radius: 30px;
+      padding: 4px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #3d4a44;
+      cursor: pointer;
+      transition: 0.15s;
+      height: 30px;
+      display: inline-flex;
+      align-items: center;
+      white-space: nowrap;
+    }
+    .tool-btn:hover {
+      border-color: #b87c5a;
+      background: #faf2eb;
+      color: #7a5b44;
+    }
+    .tool-divider {
+      width: 1px;
+      height: 24px;
+      background: rgba(200, 190, 180, 0.4);
+      margin: 0 4px;
+    }
+    .editor-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .editor-box {
+      width: 100%;
+      flex: 1;
+      min-height: 0;
+      border: none;
+      outline: none;
+      background: transparent;
+      font-size: 15px;
+      line-height: 1.8;
+      color: #2a3a33;
+      resize: none;
+      font-family: inherit;
+      padding: 4px 0;
+    }
+    .editor-box::placeholder {
+      color: #b0a89e;
+    }
+    .editor-status {
+      display: flex;
+      justify-content: flex-end;
+      padding-top: 8px;
+      border-top: 1px solid rgba(200, 190, 180, 0.2);
+      font-size: 13px;
+      color: #8b9a93;
+      flex-shrink: 0;
+      gap: 16px;
+    }
+    .editor-status span {
+      font-weight: 500;
+    }
+
+    /* ===== 预览样式 ===== */
+    .preview-article {
+      max-width: 620px;
+      margin: 0 auto;
+      padding: 8px 4px;
+      transition: all 0.2s;
+      word-wrap: break-word;
+    }
+    .preview-article h1 {
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1.3;
+      margin-bottom: 14px;
+      letter-spacing: -0.3px;
+    }
+    .preview-article h2 {
+      font-size: 21px;
+      font-weight: 600;
+      margin-top: 24px;
+      margin-bottom: 10px;
+      border-left: 4px solid #c7a58b;
+      padding-left: 14px;
+    }
+    .preview-article h3 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-top: 18px;
+      margin-bottom: 8px;
+    }
+    .preview-article p {
+      font-size: 16px;
+      line-height: 1.9;
+      margin-bottom: 14px;
+    }
+    .preview-article blockquote {
+      border-left: 4px solid #dbc8ba;
+      background: #f7f1eb;
+      padding: 12px 18px;
+      border-radius: 8px;
+      margin: 12px 0;
+      font-style: italic;
+    }
+    .preview-article ul, .preview-article ol {
+      padding-left: 24px;
+      margin: 10px 0;
+    }
+    .preview-article li {
+      margin-bottom: 4px;
+      font-size: 16px;
+      line-height: 1.7;
+    }
+    .preview-article code {
+      background: #f0ebe5;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.9em;
+    }
+    .preview-article pre {
+      background: #2d2d2d;
+      color: #f8f8f2;
+      padding: 16px 20px;
+      border-radius: 10px;
+      overflow: auto;
+      font-size: 14px;
+      line-height: 1.7;
+      margin: 16px 0;
+    }
+    .preview-article pre code {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+    }
+    .preview-article img {
+      max-width: 100%;
+      border-radius: 10px;
+      margin: 14px 0;
+      display: block;
+    }
+    .preview-article table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 16px 0;
+      font-size: 15px;
+    }
+    .preview-article th, .preview-article td {
+      border: 1px solid #d0c8c0;
+      padding: 8px 12px;
+      text-align: left;
+    }
+    .preview-article th {
+      background: #f0ebe5;
+      font-weight: 600;
+    }
+    .preview-article hr {
+      border: none;
+      border-top: 2px dashed #d0c8c0;
+      margin: 24px 0;
+    }
+
+    /* ===== 滚动同步开关（新增） ===== */
+    .scroll-sync-toggle {
+      position: sticky;
+      top: 10px;
+      float: right;
+      margin: 0 10px 0 0;
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(200, 190, 180, 0.4);
+      border-radius: 30px;
+      padding: 6px 14px;
+      font-size: 14px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+      transition: 0.2s;
+      z-index: 5;
+      line-height: 1.4;
+      user-select: none;
+    }
+    .scroll-sync-toggle:hover {
+      background: rgba(255, 255, 255, 0.95);
+      border-color: #b87c5a;
+    }
+    .scroll-sync-toggle .sync-off {
+      opacity: 0.5;
+      filter: grayscale(1);
+    }
+
+    /* ===== 右侧设置面板 ===== */
+    .setting-group {
+      margin-bottom: 20px;
+    }
+    .setting-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #5f6d66;
+      margin-bottom: 6px;
+    }
+    .setting-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .option-chip {
+      background: white;
+      border: 1px solid #dcd4cc;
+      border-radius: 40px;
+      padding: 4px 14px;
+      font-size: 13px;
+      color: #3b4a43;
+      cursor: pointer;
+      transition: 0.1s;
+      white-space: nowrap;
+    }
+    .option-chip.active {
+      border-color: #b87c5a;
+      background: #f5ede6;
+      color: #7a5b44;
+      font-weight: 600;
+    }
+    .option-chip:hover {
+      border-color: #b87c5a;
+    }
+    .setting-slider {
+      width: 100%;
+      accent-color: #b87c5a;
+      margin-top: 4px;
+    }
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 4px;
+    }
+    .color-swatch {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2px solid #e0d8d0;
+      cursor: pointer;
+      transition: 0.1s;
+    }
+    .color-swatch.active-swatch {
+      border-color: #b87c5a;
+      box-shadow: 0 0 0 2px #b87c5a40;
+    }
+    .color-swatch:hover {
+      transform: scale(1.05);
+    }
+    .toggle-chip {
+      background: white;
+      border: 1px solid #dcd4cc;
+      border-radius: 40px;
+      padding: 4px 14px;
+      font-size: 13px;
+      color: #3b4a43;
+      cursor: pointer;
+      transition: 0.1s;
+    }
+    .toggle-chip.active {
+      border-color: #b87c5a;
+      background: #b87c5a20;
+      color: #7a5b44;
+      font-weight: 600;
+    }
+
+    @media (max-width: 1024px) {
+      .columns {
+        flex-direction: column;
+      }
+      .col-left, .col-right {
+        flex: none;
+        width: 100%;
+        min-height: 200px;
+      }
+      .app {
+        height: auto;
+        padding: 16px;
+      }
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #2f3e37;
+      color: #fff;
+      padding: 10px 28px;
+      border-radius: 40px;
+      font-size: 14px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 999;
+    }
+    .toast.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app">
+    <!-- 顶栏 -->
+    <div class="header">
+      <div class="logo-area">
+        <img src="https://awxpixjeiwopbqrzyykr.supabase.co/storage/v1/object/public/video-assets/study.png" alt="学习益生" class="logo" style="height:32px;" />
+        <span class="logo-text">学习益生<span>·</span>排版</span>
+      </div>
+      <div class="header-actions">
+        <button class="btn-primary btn-danger" id="clearBtn">🗑️ 清空</button>
+        <button class="btn-primary" id="copyBtn">📋 一键复制</button>
+      </div>
+    </div>
+
+    <!-- 三栏 -->
+    <div class="columns">
+      <!-- 左侧 编辑器 -->
+      <div class="col col-left">
+        <div class="toolbar" id="toolbar">
+          <button class="tool-btn" data-tag="# ">H1</button>
+          <button class="tool-btn" data-tag="## ">H2</button>
+          <button class="tool-btn" data-tag="### ">H3</button>
+          <span class="tool-divider"></span>
+          <button class="tool-btn" data-tag="**" data-end="**">加粗</button>
+          <button class="tool-btn" data-tag="*" data-end="*">斜体</button>
+          <button class="tool-btn" data-tag="~~" data-end="~~">删除线</button>
+          <span class="tool-divider"></span>
+          <button class="tool-btn" data-tag="- ">•列表</button>
+          <button class="tool-btn" data-tag="1. ">1.列表</button>
+          <button class="tool-btn" data-tag="> ">引言</button>
+          <span class="tool-divider"></span>
+          <button class="tool-btn" data-tag="---\n\n">分割线</button>
+          <button class="tool-btn" id="tableBtn">表格</button>
+        </div>
+        <div class="editor-wrapper">
+          <textarea class="editor-box" id="editor" placeholder="在此输入 Markdown 格式的文章……"></textarea>
+          <div class="editor-status">
+            <span id="wordCount">字数：0</span>
+            <span id="charCount">字符：0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 中间 预览 -->
+      <div class="col col-middle" id="previewContainer">
+        <div class="preview-article" id="preview"></div>
+        <!-- ===== 新增：滚动同步开关 ===== -->
+        <button class="scroll-sync-toggle" id="scrollSyncToggle" title="开启/关闭滚动跟随">
+          <span id="syncIcon">🔗</span>
+        </button>
+      </div>
+
+      <!-- 右侧 排版设置 -->
+      <div class="col col-right">
+        <!-- 模板 -->
+        <div class="setting-group">
+          <span class="setting-label">样式模板</span>
+          <div class="setting-options" id="templateOptions">
+            <span class="option-chip active" data-template="default">清新</span>
+            <span class="option-chip" data-template="simple">简约</span>
+            <span class="option-chip" data-template="literary">文艺</span>
+            <span class="option-chip" data-template="classic">古典</span>
+          </div>
+        </div>
+
+        <!-- 字体 -->
+        <div class="setting-group">
+          <span class="setting-label">中文字体</span>
+          <div class="setting-options" id="fontFamilyOptions">
+            <span class="option-chip active" data-font="default">默认</span>
+            <span class="option-chip" data-font="宋体">宋体</span>
+            <span class="option-chip" data-font="黑体">黑体</span>
+            <span class="option-chip" data-font="楷体">楷体</span>
+            <span class="option-chip" data-font="微软雅黑">雅黑</span>
+          </div>
+        </div>
+
+        <!-- 正文字号 -->
+        <div class="setting-group">
+          <span class="setting-label">正文字号</span>
+          <input type="range" min="14" max="22" value="17" class="setting-slider" id="fontSizeSlider" />
+          <div class="setting-row">
+            <span style="font-size:13px; color:#6d7d74;">小</span>
+            <span style="font-size:13px; color:#6d7d74;">大</span>
+          </div>
+        </div>
+
+        <!-- 行高 -->
+        <div class="setting-group">
+          <span class="setting-label">行高</span>
+          <div class="setting-options" id="lineHeightOptions">
+            <span class="option-chip" data-lineheight="1.5">1.5</span>
+            <span class="option-chip active" data-lineheight="1.8">1.8</span>
+            <span class="option-chip" data-lineheight="2.0">2.0</span>
+            <span class="option-chip" data-lineheight="2.5">2.5</span>
+          </div>
+        </div>
+
+        <!-- 正文颜色 -->
+        <div class="setting-group">
+          <span class="setting-label">正文颜色</span>
+          <div style="display:flex; gap:8px; margin-top:4px;" id="colorSwatches">
+            <span class="color-swatch active-swatch" style="background:#2f3e37;" data-color="#2f3e37"></span>
+            <span class="color-swatch" style="background:#6b4f3a;" data-color="#6b4f3a"></span>
+            <span class="color-swatch" style="background:#4d6b5e;" data-color="#4d6b5e"></span>
+            <span class="color-swatch" style="background:#9a7b64;" data-color="#9a7b64"></span>
+            <span class="color-swatch" style="background:#a33d3d;" data-color="#a33d3d"></span>
+          </div>
+        </div>
+
+        <!-- 标题颜色 -->
+        <div class="setting-group">
+          <span class="setting-label">标题颜色</span>
+          <div style="display:flex; gap:8px; margin-top:4px;" id="headingColorSwatches">
+            <span class="color-swatch active-swatch" style="background:#1a2e2a;" data-color="#1a2e2a"></span>
+            <span class="color-swatch" style="background:#5a3d2b;" data-color="#5a3d2b"></span>
+            <span class="color-swatch" style="background:#2f4d3e;" data-color="#2f4d3e"></span>
+            <span class="color-swatch" style="background:#7a5540;" data-color="#7a5540"></span>
+            <span class="color-swatch" style="background:#8b2c2c;" data-color="#8b2c2c"></span>
+          </div>
+        </div>
+
+        <!-- 引用颜色 -->
+        <div class="setting-group">
+          <span class="setting-label">引用边框色</span>
+          <div style="display:flex; gap:8px; margin-top:4px;" id="quoteColorSwatches">
+            <span class="color-swatch active-swatch" style="background:#dbc8ba;" data-color="#dbc8ba"></span>
+            <span class="color-swatch" style="background:#b0a090;" data-color="#b0a090"></span>
+            <span class="color-swatch" style="background:#8a7a6a;" data-color="#8a7a6a"></span>
+            <span class="color-swatch" style="background:#c7a58b;" data-color="#c7a58b"></span>
+          </div>
+        </div>
+
+        <!-- 段落间距 -->
+        <div class="setting-group">
+          <span class="setting-label">段落间距</span>
+          <div class="setting-options" id="spacingOptions">
+            <span class="option-chip" data-spacing="1.5">紧凑</span>
+            <span class="option-chip active" data-spacing="1.9">适中</span>
+            <span class="option-chip" data-spacing="2.4">宽松</span>
+          </div>
+        </div>
+
+        <!-- 首行缩进 -->
+        <div class="setting-group">
+          <span class="setting-label">首行缩进</span>
+          <div class="setting-options" id="indentOptions">
+            <span class="toggle-chip active" data-indent="true">开启</span>
+            <span class="toggle-chip" data-indent="false">关闭</span>
+          </div>
+        </div>
+
+        <!-- 对齐方式 -->
+        <div class="setting-group">
+          <span class="setting-label">对齐方式</span>
+          <div class="setting-options" id="alignOptions">
+            <span class="option-chip active" data-align="left">左对齐</span>
+            <span class="option-chip" data-align="center">居中</span>
+            <span class="option-chip" data-align="right">右对齐</span>
+          </div>
+        </div>
+
+        <!-- 代码块主题 -->
+        <div class="setting-group">
+          <span class="setting-label">代码块主题</span>
+          <div class="setting-options" id="codeThemeOptions">
+            <span class="option-chip active" data-theme="dark">深色</span>
+            <span class="option-chip" data-theme="light">浅色</span>
+          </div>
+        </div>
+
+        <!-- 重置 -->
+        <div class="setting-group" style="margin-top:10px;">
+          <button class="btn-primary btn-reset" id="resetBtn" style="width:100%; justify-content:center;">🔄 恢复默认设置</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast">✅ 已复制到剪贴板</div>
+
+  <script>
+    (function() {
+      // ---------- DOM ----------
+      const editor = document.getElementById('editor');
+      const preview = document.getElementById('preview');
+      const previewContainer = document.getElementById('previewContainer');
+      const copyBtn = document.getElementById('copyBtn');
+      const clearBtn = document.getElementById('clearBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      const toast = document.getElementById('toast');
+      const wordCountEl = document.getElementById('wordCount');
+      const charCountEl = document.getElementById('charCount');
+      const syncToggle = document.getElementById('scrollSyncToggle');
+      const syncIcon = document.getElementById('syncIcon');
+
+      const fontSizeSlider = document.getElementById('fontSizeSlider');
+      const colorSwatches = document.querySelectorAll('#colorSwatches .color-swatch');
+      const headingColorSwatches = document.querySelectorAll('#headingColorSwatches .color-swatch');
+      const quoteColorSwatches = document.querySelectorAll('#quoteColorSwatches .color-swatch');
+      const templateChips = document.querySelectorAll('#templateOptions .option-chip');
+      const fontFamilyChips = document.querySelectorAll('#fontFamilyOptions .option-chip');
+      const lineHeightChips = document.querySelectorAll('#lineHeightOptions .option-chip');
+      const spacingChips = document.querySelectorAll('#spacingOptions .option-chip');
+      const indentChips = document.querySelectorAll('#indentOptions .toggle-chip');
+      const alignChips = document.querySelectorAll('#alignOptions .option-chip');
+      const codeThemeChips = document.querySelectorAll('#codeThemeOptions .option-chip');
+
+      // ---------- 状态 ----------
+      let currentTemplate = 'default';
+      let currentFontFamily = 'default';
+      let currentFontSize = 17;
+      let currentLineHeight = 1.8;
+      let currentColor = '#2f3e37';
+      let currentHeadingColor = '#1a2e2a';
+      let currentQuoteColor = '#dbc8ba';
+      let currentSpacing = 1.9;
+      let currentIndent = true;
+      let currentAlign = 'left';
+      let currentCodeTheme = 'dark';
+      let scrollSyncEnabled = true; // 新增：滚动同步开关状态
+
+      // ---------- 存储 ----------
+      function loadSettings() {
+        const saved = localStorage.getItem('xuexiyisheng_settings');
+        if (saved) {
+          try {
+            const settings = JSON.parse(saved);
+            currentTemplate = settings.template || 'default';
+            currentFontFamily = settings.fontFamily || 'default';
+            currentFontSize = settings.fontSize || 17;
+            currentLineHeight = settings.lineHeight || 1.8;
+            currentColor = settings.color || '#2f3e37';
+            currentHeadingColor = settings.headingColor || '#1a2e2a';
+            currentQuoteColor = settings.quoteColor || '#dbc8ba';
+            currentSpacing = settings.spacing || 1.9;
+            currentIndent = settings.indent !== undefined ? settings.indent : true;
+            currentAlign = settings.align || 'left';
+            currentCodeTheme = settings.codeTheme || 'dark';
+            scrollSyncEnabled = settings.scrollSync !== undefined ? settings.scrollSync : true; // 新增
+          } catch(e) {}
+        }
+      }
+      function saveSettings() {
+        const settings = {
+          template: currentTemplate,
+          fontFamily: currentFontFamily,
+          fontSize: currentFontSize,
+          lineHeight: currentLineHeight,
+          color: currentColor,
+          headingColor: currentHeadingColor,
+          quoteColor: currentQuoteColor,
+          spacing: currentSpacing,
+          indent: currentIndent,
+          align: currentAlign,
+          codeTheme: currentCodeTheme,
+          scrollSync: scrollSyncEnabled // 新增
+        };
+        localStorage.setItem('xuexiyisheng_settings', JSON.stringify(settings));
+      }
+
+      // ---------- 应用样式 ----------
+      function applyStyles() {
+        const article = preview;
+        if (!article) return;
+
+        article.style.fontSize = currentFontSize + 'px';
+        article.style.color = currentColor;
+        article.style.textAlign = currentAlign;
+        article.style.lineHeight = currentLineHeight;
+
+        let fontFamily = '';
+        switch(currentFontFamily) {
+          case '宋体': fontFamily = '"SimSun","宋体",serif'; break;
+          case '黑体': fontFamily = '"SimHei","黑体",sans-serif'; break;
+          case '楷体': fontFamily = '"KaiTi","楷体",serif'; break;
+          case '微软雅黑': fontFamily = '"Microsoft YaHei","微软雅黑",sans-serif'; break;
+          default: fontFamily = '-apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+        }
+        article.style.fontFamily = fontFamily;
+
+        const blockEls = article.querySelectorAll('p, blockquote, ul, ol, h1, h2, h3, h4, pre, table');
+        blockEls.forEach(el => {
+          el.style.marginBottom = (currentSpacing * 0.5) + 'rem';
+        });
+
+        const paragraphs = article.querySelectorAll('p');
+        paragraphs.forEach(p => {
+          p.style.textIndent = currentIndent ? '2em' : '0';
+        });
+
+        if (currentTemplate === 'simple') {
+          const bq = article.querySelectorAll('blockquote');
+          bq.forEach(el => el.style.borderLeftColor = '#ccc');
+        } else if (currentTemplate === 'literary') {
+          const h2s = article.querySelectorAll('h2');
+          h2s.forEach(h2 => h2.style.borderLeftColor = '#b87c5a');
+        } else if (currentTemplate === 'classic') {
+          article.style.letterSpacing = '0.5px';
+          const h1 = article.querySelector('h1');
+          if (h1) h1.style.borderBottom = '2px solid #c7a58b';
+        }
+
+        const headings = article.querySelectorAll('h1, h2, h3, h4, h5, h6');
+        headings.forEach(h => h.style.color = currentHeadingColor);
+
+        const blockquotes = article.querySelectorAll('blockquote');
+        blockquotes.forEach(bq => bq.style.borderLeftColor = currentQuoteColor);
+
+        const preElements = article.querySelectorAll('pre');
+        preElements.forEach(pre => {
+          if (currentCodeTheme === 'dark') {
+            pre.style.background = '#2d2d2d';
+            pre.style.color = '#f8f8f2';
+          } else {
+            pre.style.background = '#f5f2f0';
+            pre.style.color = '#1e2b26';
+          }
+        });
+
+        saveSettings();
+      }
+
+      // ---------- 预览更新 ----------
+      function updatePreview() {
+        const markdown = editor.value;
+        let html = marked.parse(markdown);
+        preview.innerHTML = html;
+        applyStyles();
+        updateWordCount();
+        saveContent();
+      }
+
+      // ---------- 内容存储 ----------
+      const STORAGE_KEY = 'xuexiyisheng_content';
+      function saveContent() {
+        localStorage.setItem(STORAGE_KEY, editor.value);
+      }
+      function loadContent() {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          editor.value = saved;
+        } else {
+          editor.value = `# 春日山居笔记
+
+## 晨起听雨
+
+昨夜一场春雨，今晨推窗，满山都是湿润的雾气。远处的竹林在风中摇曳，仿佛在低声细语。我沏了一壶老白茶，坐在檐下，看雨丝斜织。
+
+> “山静似太古，日长如小年。”
+> 此情此景，正是古人笔下的闲适。
+
+庭院里几株海棠已经落了大半，但新绿的叶子却愈发鲜亮。偶尔有几声鸟鸣，更显得山谷幽静。
+
+### 午后小憩
+
+午后太阳偶尔露脸，我便搬了竹椅到廊下。读了几页《陶庵梦忆》，困意袭来，竟在鸟鸣声中沉沉睡去。醒来时，茶已凉，但心中却有种说不出的满足。
+
+- 山中的日子，总是这样缓慢而饱满。
+- 每一刻都像是被时光轻轻抚摸过。
+- 或许这就是生活本来的样子。`;
+        }
+      }
+
+      // ---------- 字数统计 ----------
+      function updateWordCount() {
+        const text = editor.value;
+        const charCount = text.length;
+        const wordCount = (text.replace(/[\s\n\r]+/g, '')).length;
+        wordCountEl.textContent = `字数：${wordCount}`;
+        charCountEl.textContent = `字符：${charCount}`;
+      }
+
+      // ---------- 工具栏插入 ----------
+      function insertText(tag, end = '') {
+        const start = editor.selectionStart;
+        const endPos = editor.selectionEnd;
+        const text = editor.value;
+        let newText;
+        if (start === endPos) {
+          newText = text.slice(0, start) + tag + text.slice(start);
+          editor.value = newText;
+          editor.selectionStart = editor.selectionEnd = start + tag.length;
+        } else {
+          const selected = text.substring(start, endPos);
+          newText = text.slice(0, start) + tag + selected + end + text.slice(endPos);
+          editor.value = newText;
+          editor.selectionStart = start + tag.length;
+          editor.selectionEnd = endPos + tag.length;
+        }
+        editor.focus();
+        updatePreview();
+      }
+
+      document.getElementById('toolbar').addEventListener('click', function(e) {
+        const btn = e.target.closest('.tool-btn');
+        if (!btn) return;
+        if (btn.id === 'tableBtn') {
+          insertText(`| 列1 | 列2 |\n| --- | --- |\n| 内容 | 内容 |`);
+          return;
+        }
+        const tag = btn.dataset.tag;
+        const end = btn.dataset.end || '';
+        if (tag) insertText(tag, end);
+      });
+
+      // ---------- 清空 ----------
+      clearBtn.addEventListener('click', function() {
+        if (confirm('确定清空所有内容吗？')) {
+          editor.value = '';
+          updatePreview();
+          showToast('已清空内容');
+        }
+      });
+
+      // ---------- 重置设置 ----------
+      resetBtn.addEventListener('click', function() {
+        if (confirm('重置所有排版设置到默认值？')) {
+          // 重置状态
+          currentTemplate = 'default';
+          currentFontFamily = 'default';
+          currentFontSize = 17;
+          currentLineHeight = 1.8;
+          currentColor = '#2f3e37';
+          currentHeadingColor = '#1a2e2a';
+          currentQuoteColor = '#dbc8ba';
+          currentSpacing = 1.9;
+          currentIndent = true;
+          currentAlign = 'left';
+          currentCodeTheme = 'dark';
+          scrollSyncEnabled = true; // 重置为开启
+
+          // 更新UI
+          templateChips.forEach(c => c.classList.remove('active'));
+          document.querySelector('#templateOptions .option-chip[data-template="default"]').classList.add('active');
+          fontFamilyChips.forEach(c => c.classList.remove('active'));
+          document.querySelector('#fontFamilyOptions .option-chip[data-font="default"]').classList.add('active');
+          fontSizeSlider.value = 17;
+          lineHeightChips.forEach(c => c.classList.remove('active'));
+          document.querySelector('#lineHeightOptions .option-chip[data-lineheight="1.8"]').classList.add('active');
+          colorSwatches.forEach(s => s.classList.remove('active-swatch'));
+          document.querySelector('#colorSwatches .color-swatch[style*="#2f3e37"]').classList.add('active-swatch');
+          headingColorSwatches.forEach(s => s.classList.remove('active-swatch'));
+          document.querySelector('#headingColorSwatches .color-swatch[style*="#1a2e2a"]').classList.add('active-swatch');
+          quoteColorSwatches.forEach(s => s.classList.remove('active-swatch'));
+          document.querySelector('#quoteColorSwatches .color-swatch[style*="#dbc8ba"]').classList.add('active-swatch');
+          spacingChips.forEach(c => c.classList.remove('active'));
+          document.querySelector('#spacingOptions .option-chip[data-spacing="1.9"]').classList.add('active');
+          indentChips.forEach(c => c.classList.remove('active'));
+          document.querySelector('#indentOptions .toggle-chip[data-indent="true"]').classList.add('active');
+          alignChips.forEach(c => c.classList.remove('active'));
+          document.querySelector('#alignOptions .option-chip[data-align="left"]').classList.add('active');
+          codeThemeChips.forEach(c => c.classList.remove('active'));
+          document.querySelector('#codeThemeOptions .option-chip[data-theme="dark"]').classList.add('active');
+
+          // 更新开关UI
+          syncIcon.textContent = '🔗';
+          syncToggle.classList.remove('sync-off');
+
+          applyStyles();
+          saveSettings();
+          showToast('已恢复默认设置');
+        }
+      });
+
+      // ---------- 设置事件绑定 ----------
+      templateChips.forEach(chip => {
+        chip.addEventListener('click', function() {
+          templateChips.forEach(c => c.classList.remove('active'));
+          this.classList.add('active');
+          currentTemplate = this.dataset.template;
+          applyStyles();
+        });
+      });
+      fontFamilyChips.forEach(chip => {
+        chip.addEventListener('click', function() {
+          fontFamilyChips.forEach(c => c.classList.remove('active'));
+          this.classList.add('active');
+          currentFontFamily = this.dataset.font;
+          applyStyles();
+        });
+      });
+      fontSizeSlider.addEventListener('input', function() {
+        currentFontSize = parseInt(this.value);
+        applyStyles();
+      });
+      lineHeightChips.forEach(chip => {
+        chip.addEventListener('click', function() {
+          lineHeightChips.forEach(c => c.classList.remove('active'));
+          this.classList.add('active');
+          currentLineHeight = parseFloat(this.dataset.lineheight);
+          applyStyles();
+        });
+      });
+      colorSwatches.forEach(swatch => {
+        swatch.addEventListener('click', function() {
+          colorSwatches.forEach(s => s.classList.remove('active-swatch'));
+          this.classList.add('active-swatch');
+          currentColor = this.dataset.color;
+          applyStyles();
+        });
+      });
+      headingColorSwatches.forEach(swatch => {
+        swatch.addEventListener('click', function() {
+          headingColorSwatches.forEach(s => s.classList.remove('active-swatch'));
+          this.classList.add('active-swatch');
+          currentHeadingColor = this.dataset.color;
+          applyStyles();
+        });
+      });
+      quoteColorSwatches.forEach(swatch => {
+        swatch.addEventListener('click', function() {
+          quoteColorSwatches.forEach(s => s.classList.remove('active-swatch'));
+          this.classList.add('active-swatch');
+          currentQuoteColor = this.dataset.color;
+          applyStyles();
+        });
+      });
+      spacingChips.forEach(chip => {
+        chip.addEventListener('click', function() {
+          spacingChips.forEach(c => c.classList.remove('active'));
+          this.classList.add('active');
+          currentSpacing = parseFloat(this.dataset.spacing);
+          applyStyles();
+        });
+      });
+      indentChips.forEach(chip => {
+        chip.addEventListener('click', function() {
+          indentChips.forEach(c => c.classList.remove('active'));
+          this.classList.add('active');
+          currentIndent = this.dataset.indent === 'true';
+          applyStyles();
+        });
+      });
+      alignChips.forEach(chip => {
+        chip.addEventListener('click', function() {
+          alignChips.forEach(c => c.classList.remove('active'));
+          this.classList.add('active');
+          currentAlign = this.dataset.align;
+          applyStyles();
+        });
+      });
+      codeThemeChips.forEach(chip => {
+        chip.addEventListener('click', function() {
+          codeThemeChips.forEach(c => c.classList.remove('active'));
+          this.classList.add('active');
+          currentCodeTheme = this.dataset.theme;
+          applyStyles();
+        });
+      });
+
+      // ---------- 滚动同步（带开关控制） ----------
+      editor.addEventListener('scroll', function() {
+        if (!scrollSyncEnabled) return; // 关闭则跳过
+        const ratio = this.scrollTop / (this.scrollHeight - this.clientHeight);
+        if (isFinite(ratio)) {
+          previewContainer.scrollTop = ratio * (previewContainer.scrollHeight - previewContainer.clientHeight);
+        }
+      });
+
+      // ---------- 开关点击事件 ----------
+      syncToggle.addEventListener('click', function() {
+        scrollSyncEnabled = !scrollSyncEnabled;
+        syncIcon.textContent = scrollSyncEnabled ? '🔗' : '🔓';
+        syncToggle.classList.toggle('sync-off', !scrollSyncEnabled);
+        saveSettings();
+        showToast(scrollSyncEnabled ? '滚动跟随已开启' : '滚动跟随已关闭');
+      });
+
+      // ---------- 复制 ----------
+      copyBtn.addEventListener('click', async function() {
+        const clone = preview.cloneNode(true);
+
+        function inlineStyles(element) {
+          const computed = window.getComputedStyle(element);
+          let styleStr = '';
+          const styleProps = ['color', 'font-family', 'font-size', 'line-height', 'text-align', 'margin', 'padding', 'border', 'background', 'font-weight', 'font-style', 'text-decoration', 'display', 'text-indent'];
+          styleProps.forEach(prop => {
+            const val = computed.getPropertyValue(prop);
+            if (val && val !== 'none' && val !== 'normal' && val !== '0px' && val !== 'transparent') {
+              styleStr += `${prop}:${val};`;
+            }
+          });
+          if (element.tagName === 'A') {
+            styleStr += 'color:#1a73e8 !important;text-decoration:underline !important;';
+          }
+          if (element.tagName === 'PRE') {
+            styleStr += 'background:#2d2d2d !important;color:#f8f8f2 !important;padding:16px 20px !important;border-radius:10px !important;overflow-x:auto !important;font-family:"Courier New",Consolas,monospace !important;font-size:14px !important;line-height:1.7 !important;';
+          }
+          if (element.tagName === 'CODE' && element.parentElement.tagName !== 'PRE') {
+            styleStr += 'background:#f0ebe5 !important;padding:2px 8px !important;border-radius:4px !important;color:#d73a49 !important;';
+          }
+          if (element.tagName === 'IMG') {
+            styleStr += 'max-width:100% !important;height:auto !important;border-radius:10px !important;display:block !important;margin:14px 0 !important;';
+          }
+          if (element.tagName === 'H2') {
+            const borderLeft = computed.getPropertyValue('border-left');
+            if (borderLeft && borderLeft !== 'none') {
+              styleStr += `border-left:${borderLeft};`;
+            }
+          }
+          if (element.tagName === 'TABLE') {
+            styleStr += 'border-collapse:collapse;width:100%;';
+          }
+          if (element.tagName === 'TH' || element.tagName === 'TD') {
+            styleStr += 'border:1px solid #d0c8c0;padding:8px 12px;text-align:left;';
+          }
+          if (styleStr) {
+            element.style.cssText = styleStr;
+          }
+          Array.from(element.children).forEach(child => inlineStyles(child));
+        }
+
+        inlineStyles(clone);
+        const finalHTML = clone.innerHTML;
+
+        try {
+          const blob = new Blob([finalHTML], { type: 'text/html' });
+          const clipboardItem = new ClipboardItem({
+            'text/html': blob,
+            'text/plain': new Blob([finalHTML.replace(/<[^>]+>/g, '')], { type: 'text/plain' })
+          });
+          await navigator.clipboard.write([clipboardItem]);
+          showToast('✅ 已复制到剪贴板，可粘贴至公众号');
+        } catch (err) {
+          const text = preview.innerText;
+          navigator.clipboard.writeText(text).then(() => {
+            showToast('✅ 已复制纯文本（请手动粘贴）');
+          }).catch(() => {
+            alert('复制失败，请手动全选预览内容后 Ctrl+C 复制。');
+          });
+        }
+      });
+
+      // ---------- Toast ----------
+      let toastTimer = null;
+      function showToast(msg) {
+        toast.textContent = msg;
+        toast.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+          toast.classList.remove('show');
+        }, 3000);
+      }
+
+      // ---------- 初始化 ----------
+      loadSettings();
+      loadContent();
+
+      // 同步UI状态
+      function syncUI() {
+        templateChips.forEach(c => c.classList.toggle('active', c.dataset.template === currentTemplate));
+        fontFamilyChips.forEach(c => c.classList.toggle('active', c.dataset.font === currentFontFamily));
+        fontSizeSlider.value = currentFontSize;
+        lineHeightChips.forEach(c => c.classList.toggle('active', parseFloat(c.dataset.lineheight) === currentLineHeight));
+        colorSwatches.forEach(s => s.classList.toggle('active-swatch', s.dataset.color === currentColor));
+        headingColorSwatches.forEach(s => s.classList.toggle('active-swatch', s.dataset.color === currentHeadingColor));
+        quoteColorSwatches.forEach(s => s.classList.toggle('active-swatch', s.dataset.color === currentQuoteColor));
+        spacingChips.forEach(c => c.classList.toggle('active', parseFloat(c.dataset.spacing) === currentSpacing));
+        indentChips.forEach(c => c.classList.toggle('active', (c.dataset.indent === 'true') === currentIndent));
+        alignChips.forEach(c => c.classList.toggle('active', c.dataset.align === currentAlign));
+        codeThemeChips.forEach(c => c.classList.toggle('active', c.dataset.theme === currentCodeTheme));
+        // 开关状态
+        syncIcon.textContent = scrollSyncEnabled ? '🔗' : '🔓';
+        syncToggle.classList.toggle('sync-off', !scrollSyncEnabled);
+      }
+      syncUI();
+      updatePreview();
+
+      editor.addEventListener('input', updatePreview);
+      window.addEventListener('beforeunload', function() {
+        saveContent();
+        saveSettings();
+      });
+
+    })();
+  </script>
+</body>
+</html>
