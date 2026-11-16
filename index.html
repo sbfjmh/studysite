@@ -1,16 +1,216 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
- <title>我的网站</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>我的网站</title>
 <style>
- body{ font -family: arial; text-align: center; margin-top: 50px;}
-h1{ color:#333}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;height:100%;overflow:hidden;font-family:system-ui, -apple-system, Arial, sans-serif;}
+#canvas-container{position:fixed;top:0;left:0;width:100%;height:100%;z-index:1;background:#020409;}
+.content{
+    position:relative;
+    z-index:2;
+    width:100%;
+    height:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    color:#fff;
+    text-shadow: 0 0 14px #000;
+    pointer-events:none;
+}
+.content > *{
+    pointer-events:auto;
+}
+h1{font-size:42px;margin-bottom:24px;letter-spacing:2px;}
+.desc{font-size:18px;margin-bottom:40px;opacity:0.85;}
+.item{
+    font-size:20px;
+    margin:14px 0;
+}
+.item a{
+    color:#7cf0ff;
+    text-decoration:none;
+    padding:8px 14px;
+    border-radius:10px;
+    transition:all 0.3s;
+}
+.item a:hover{
+    background:#18344680;
+    color:#b8f8ff;
+    text-shadow:0 0 10px #4ce0ff;
+}
 </style>
 </head>
 <body>
-<h1>Welcome to my page!</h1>
-<p> this is the test site.</p>
-<p>1、MiniGame：<a href="Game_of_life.html">Game of Life</a></p>
-<p>2、TDEE计算：<a href="TDEE.html">TDEE</a></p>
+<div id="canvas-container"></div>
+<div class="content">
+    <h1>Welcome to my page!</h1>
+    <div class="desc">this is the test site.</div>
+    <div class="item">1、MiniGame：<a href="Game_of_life.html">Game of Life</a></div>
+    <div class="item">2、TDEE计算：<a href="TDEE.html">TDEE</a></div>
+    <div class="item">3、我的世界VS：<a href="mc_vs.html">我的世界VS</a></div>
+    <div class="item">4、公众号排版：<a href="write.html">公众号美化排版VS</a></div>
+<div class="item">5、汉字笔顺查询：<a href="stroke.html">汉字笔顺查询</a></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+// 生成圆形发光纹理
+function createGlowTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gradient.addColorStop(0, 'rgba(255,255,255,1)');
+    gradient.addColorStop(0.3, 'rgba(255,255,255,0.6)');
+    gradient.addColorStop(0.6, 'rgba(255,255,255,0.15)');
+    gradient.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 128, 128);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return texture;
+}
+const glowTexture = createGlowTexture();
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+const count = 1800;
+const geo = new THREE.BufferGeometry();
+const positions = new Float32Array(count * 3);
+const baseColors = new Float32Array(count *3);
+const colors = new Float32Array(count *3);
+const sizes = new Float32Array(count);
+const baseSizes = new Float32Array(count);
+const vx = new Float32Array(count);
+const vy = new Float32Array(count);
+const vz = new Float32Array(count);
+const active = new Float32Array(count);
+
+for(let i=0;i<count;i++){
+    const i3 = i*3;
+    positions[i3] = (Math.random()-0.5)*1000;
+    positions[i3+1] = (Math.random()-0.5)*1000;
+    positions[i3+2] = (Math.random()-0.5)*1000;
+
+    baseColors[i3]=1; baseColors[i3+1]=1; baseColors[i3+2]=1;
+    colors[i3]=1; colors[i3+1]=1; colors[i3+2]=1;
+
+    baseSizes[i] = Math.random()*0.4 + 0.15;
+    sizes[i] = baseSizes[i];
+    active[i]=0;
+
+    vx[i] = (Math.random()-0.5)*0.06;
+    vy[i] = (Math.random()-0.5)*0.06;
+    vz[i] = (Math.random()-0.5)*0.06;
+}
+geo.setAttribute('position', new THREE.BufferAttribute(positions,3));
+geo.setAttribute('color', new THREE.BufferAttribute(colors,3));
+
+const mat = new THREE.PointsMaterial({
+    size:1.2,
+    map: glowTexture,
+    vertexColors:true,
+    transparent:true,
+    opacity:0.85,
+    sizeAttenuation:true,
+    depthWrite:false,
+    blending: THREE.AdditiveBlending
+});
+const points = new THREE.Points(geo, mat);
+scene.add(points);
+camera.position.z = 240;
+
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let mouseX=0, mouseY=0;
+
+window.addEventListener('mousemove',e=>{
+    mouse.x = (e.clientX / window.innerWidth)*2 -1;
+    mouse.y = -(e.clientY / window.innerHeight)*2 +1;
+    mouseX = mouse.x * 0.35;
+    mouseY = mouse.y * 0.35;
+})
+
+const posAttr = geo.attributes.position;
+const posArr = posAttr.array;
+const colAttr = geo.attributes.color;
+const colArr = colAttr.array;
+
+const planetPalette = [
+    [0.2,0.5,0.9],
+    [0.7,0.3,0.4],
+    [0.3,0.7,0.4],
+    [0.8,0.6,0.2],
+    [0.6,0.3,0.8]
+];
+
+function animate(){
+    requestAnimationFrame(animate);
+
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObject(points);
+    const hitIndexSet = new Set();
+    intersects.forEach(item=>{
+        hitIndexSet.add(item.index);
+    })
+
+    for(let i=0;i<count;i++){
+        const i3 = i*3;
+        posArr[i3] += vx[i];
+        posArr[i3+1] += vy[i];
+        posArr[i3+2] += vz[i];
+
+        if(posArr[i3]>500) posArr[i3]=-500;
+        if(posArr[i3]<-500) posArr[i3]=500;
+        if(posArr[i3+1]>500) posArr[i3+1]=-500;
+        if(posArr[i3+1]<-500) posArr[i3+1]=500;
+        if(posArr[i3+2]>500) posArr[i3+2]=-500;
+        if(posArr[i3+2]<-500) posArr[i3+2]=500;
+
+        const targetActive = hitIndexSet.has(i) ? 1 : 0;
+        active[i] += (targetActive - active[i]) * 0.08;
+
+        if(active[i]>0.01){
+            const pColor = planetPalette[i % planetPalette.length];
+            colArr[i3]   = pColor[0];
+            colArr[i3+1] = pColor[1];
+            colArr[i3+2] = pColor[2];
+            sizes[i] = THREE.MathUtils.lerp(baseSizes[i], baseSizes[i] * 9, active[i]);
+        }else{
+            colArr[i3]   = baseColors[i3];
+            colArr[i3+1] = baseColors[i3+1];
+            colArr[i3+2] = baseColors[i3+2];
+            sizes[i] = baseSizes[i];
+        }
+    }
+
+    posAttr.needsUpdate = true;
+    colAttr.needsUpdate = true;
+
+    points.rotation.y += 0.0006;
+    points.rotation.x += 0.0002;
+    points.rotation.y += mouseX * 0.0018;
+    points.rotation.x += mouseY * 0.0018;
+
+    renderer.render(scene,camera);
+}
+animate();
+
+window.addEventListener('resize',()=>{
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+})
+</script>
 </body>
 </html>

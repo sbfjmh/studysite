@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>汉字笔顺查询</title>
+    <!-- 1. 引入 Hanzi Writer 核心库 -->
+    <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.0/dist/hanzi-writer.min.js">
+    </script>
+    <style>
+        /* 全局重置，适配移动端 */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: #ffffff;
+            border-radius: 32px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+            padding: 30px 24px 40px;
+            max-width: 500px;
+            width: 100%;
+            transition: all 0.2s ease;
+        }
+
+        /* 标题区域 */
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1a1a2e;
+            letter-spacing: 2px;
+        }
+
+        .header p {
+            font-size: 14px;
+            color: #888;
+            margin-top: 6px;
+        }
+
+        /* 输入框和按钮 */
+        .search-area {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+
+        .search-area input {
+            flex: 1;
+            height: 48px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 0 16px;
+            font-size: 18px;
+            color: #1a1a2e;
+            background: #f8fafc;
+            outline: none;
+            transition: border 0.2s;
+        }
+
+        .search-area input:focus {
+            border-color: #3b82f6;
+            background: #ffffff;
+        }
+
+        .search-area input::placeholder {
+            color: #b0b8c4;
+            font-size: 16px;
+        }
+
+        .search-area button {
+            height: 48px;
+            padding: 0 24px;
+            background: #3b82f6;
+            color: #fff;
+            border: none;
+            border-radius: 16px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .search-area button:active {
+            transform: scale(0.96);
+            background: #2563eb;
+        }
+
+        /* 笔顺展示容器 */
+        .canvas-wrapper {
+            background: #fafcff;
+            border-radius: 24px;
+            border: 1px solid #edf2f7;
+            padding: 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 220px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        #character-target {
+            width: 100%;
+            max-width: 300px;
+            aspect-ratio: 1 / 1;
+            margin: 0 auto;
+        }
+
+        /* 空状态提示 */
+        .placeholder-text {
+            color: #b0b8c4;
+            font-size: 16px;
+            text-align: center;
+            padding: 30px 0;
+            user-select: none;
+        }
+
+        /* 底部信息 */
+        .footer-info {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 12px;
+            color: #b0b8c4;
+        }
+
+        /* ========== iPad / 平板 适配 ========== */
+        @media (min-width: 768px) {
+            .container {
+                padding: 40px 36px 48px;
+                max-width: 600px;
+            }
+
+            .header h1 {
+                font-size: 30px;
+            }
+
+            .search-area input {
+                height: 56px;
+                font-size: 20px;
+                padding: 0 20px;
+            }
+
+            .search-area button {
+                height: 56px;
+                padding: 0 32px;
+                font-size: 18px;
+            }
+
+            #character-target {
+                max-width: 360px;
+            }
+
+            .canvas-wrapper {
+                min-height: 280px;
+                padding: 24px;
+            }
+        }
+
+        /* ========== 大屏适配（可选） ========== */
+        @media (min-width: 1024px) {
+            .container {
+                max-width: 700px;
+                padding: 48px 48px 56px;
+            }
+
+            #character-target {
+                max-width: 420px;
+            }
+
+            .canvas-wrapper {
+                min-height: 340px;
+            }
+        }
+
+        /* ========== 深色模式支持（可选） ========== */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: #12121a;
+            }
+
+            .container {
+                background: #1e1e2a;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            }
+
+            .header h1 {
+                color: #f1f5f9;
+            }
+
+            .header p {
+                color: #94a3b8;
+            }
+
+            .search-area input {
+                background: #2a2a3a;
+                border-color: #3a3a4e;
+                color: #f1f5f9;
+            }
+
+            .search-area input:focus {
+                border-color: #60a5fa;
+                background: #2a2a3a;
+            }
+
+            .search-area input::placeholder {
+                color: #6b7280;
+            }
+
+            .search-area button {
+                background: #3b82f6;
+            }
+
+            .canvas-wrapper {
+                background: #16161f;
+                border-color: #2a2a3a;
+            }
+
+            .placeholder-text {
+                color: #6b7280;
+            }
+
+            .footer-info {
+                color: #6b7280;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- 标题 -->
+        <div class="header">
+            <h1>✍️ 笔顺查询</h1>
+            <p>输入汉字，查看标准笔顺动画</p>
+        </div>
+
+        <!-- 搜索区 -->
+        <div class="search-area">
+            <input type="text" id="char-input" placeholder="请输入汉字，如：永" maxlength="1" autofocus>
+            <button id="query-btn">查询</button>
+        </div>
+
+        <!-- 笔顺展示区 -->
+        <div class="canvas-wrapper">
+            <div id="character-target">
+                <div class="placeholder-text">输入汉字后点击查询</div>
+            </div>
+        </div>
+
+        <div class="footer-info">
+            数据来源：Make Me A Hanzi · 支持简/繁体
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // DOM 元素
+            const inputEl = document.getElementById('char-input');
+            const queryBtn = document.getElementById('query-btn');
+            const targetEl = document.getElementById('character-target');
+
+            // 当前 Writer 实例
+            let currentWriter = null;
+
+            /**
+             * 核心函数：渲染指定汉字的笔顺
+             */
+            function renderCharacter(char) {
+                // 1. 基本校验：必须是单个汉字
+                if (!char || char.length !== 1) {
+                    targetEl.innerHTML = `<div class="placeholder-text">请输入单个汉字</div>`;
+                    return;
+                }
+
+                // 简单的汉字 Unicode 范围校验（基本汉字 + 部分扩展）
+                const code = char.charCodeAt(0);
+                const isHanzi = (code >= 0x4E00 && code <= 0x9FFF) ||
+                    (code >= 0x3400 && code <= 0x4DBF) ||
+                    (code >= 0x20000 && code <= 0x2A6DF) ||
+                    (code >= 0x2A700 && code <= 0x2B73F) ||
+                    (code >= 0x2B740 && code <= 0x2B81F) ||
+                    (code >= 0x2B820 && code <= 0x2CEAF) ||
+                    (code >= 0x2CEB0 && code <= 0x2EBEF) ||
+                    (code >= 0x30000 && code <= 0x3134F);
+
+                if (!isHanzi) {
+                    targetEl.innerHTML = `<div class="placeholder-text">⚠️ 请输入有效汉字</div>`;
+                    return;
+                }
+
+                // 2. 清空容器，准备渲染
+                targetEl.innerHTML = '';
+
+                // 3. 配置项（可根据喜好调整）
+                const config = {
+                    width: 300, // 画布宽度
+                    height: 300, // 画布高度
+                    padding: 20, // 内边距
+                    strokeColor: '#3b82f6', // 笔画颜色
+                    strokeAnimationSpeed: 1.2, // 动画速度 (1 = 正常)
+                    delayBetweenStrokes: 600, // 笔画间隔 (毫秒)
+                    showOutline: true, // 显示浅色轮廓
+                    outlineColor: '#e2e8f0', // 轮廓颜色
+                    showCharacter: false, // 不显示静态字，只显示动态笔画
+                    renderer: 'svg' // 渲染方式: 'svg' 或 'canvas'
+                };
+
+                // 4. 针对移动端做尺寸自适应
+                const containerWidth = targetEl.clientWidth || 300;
+                const size = Math.min(containerWidth, 400);
+                config.width = size;
+                config.height = size;
+
+                // 5. 创建 Writer 实例并运行动画
+                try {
+                    currentWriter = HanziWriter.create(targetEl, char, config);
+                    // 开始笔顺动画 (返回 Promise)
+                    currentWriter.animateCharacter()
+                        .then(() => {
+                            // 动画完成后的回调（可选）
+                            console.log(`✅ "${char}" 笔顺动画完成`);
+                        })
+                        .catch((err) => {
+                            // 如果字符数据不存在或网络问题
+                            console.warn(`⚠️ 动画出错: ${err}`);
+                            // 显示友好提示
+                            targetEl.innerHTML =
+                                `<div class="placeholder-text">⚠️ 暂不支持该汉字<br><span style="font-size:12px;color:#94a3b8;">数据可能未收录</span></div>`;
+                        });
+                } catch (error) {
+                    console.error('❌ 创建 Writer 失败:', error);
+                    targetEl.innerHTML = `<div class="placeholder-text">⚠️ 初始化失败，请重试</div>`;
+                }
+            }
+
+            /**
+             * 处理查询逻辑
+             */
+            function handleQuery() {
+                const raw = inputEl.value.trim();
+                // 只取第一个字符
+                const char = raw.charAt(0);
+                renderCharacter(char);
+                // 清空输入框，方便输入下一个字
+                inputEl.value = '';
+                // 自动聚焦（移动端软键盘会弹出）
+                inputEl.focus();
+            }
+
+            // -------- 事件绑定 --------
+
+            // 1. 点击查询按钮
+            queryBtn.addEventListener('click', handleQuery);
+
+            // 2. 键盘回车键
+            inputEl.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleQuery();
+                }
+            });
+
+            // 3. 窗口尺寸变化时，重新渲染（适配旋转屏幕）
+            let resizeTimer = null;
+            window.addEventListener('resize', function() {
+                // 防抖：避免频繁重建
+                if (resizeTimer) {
+                    clearTimeout(resizeTimer);
+                }
+                resizeTimer = setTimeout(() => {
+                    // 如果当前有显示的字符，重新渲染
+                    const currentChar = inputEl.value.trim().charAt(0);
+                    if (currentChar && currentWriter) {
+                        renderCharacter(currentChar);
+                    }
+                    resizeTimer = null;
+                }, 300);
+            });
+
+            // 4. 页面加载完成后，默认展示一个示例汉字
+            window.addEventListener('load', function() {
+                // 延迟一帧，确保布局稳定
+                requestAnimationFrame(() => {
+                    // 默认查询 "永" 字 (包含基本笔画)
+                    inputEl.value = '永';
+                    renderCharacter('永');
+                });
+            });
+
+            // 5. 小优化：点击容器空白区域时，聚焦到输入框
+            targetEl.addEventListener('click', function() {
+                inputEl.focus();
+            });
+
+        })();
+    </script>
+
+</body>
+</html>

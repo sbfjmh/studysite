@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>军棋游戏（标准棋盘+基础功能）</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft Yahei", 宋体, sans-serif;
+        }
+        body {
+            background: #f0e6d2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        .title {
+            font-size: 28px;
+            color: #8b4513;
+            margin-bottom: 15px;
+            text-shadow: 1px 1px 2px #ccc;
+        }
+        /* 棋盘容器：包含棋盘+河界 */
+        .board-wrapper {
+            border: 4px solid #8b4513;
+            background: #fff8dc;
+            position: relative;
+        }
+        /* 标准10×12棋盘 */
+        .chessboard {
+            display: grid;
+            grid-template-columns: repeat(10, 42px);
+            grid-template-rows: repeat(12, 42px);
+            gap: 1px;
+            position: relative;
+        }
+        /* 河界 */
+        .river {
+            position: absolute;
+            top: calc(42px * 5);
+            left: 0;
+            width: 100%;
+            height: calc(42px * 2);
+            background: #e6f3ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #0066cc;
+            z-index: 1;
+            border-top: 1px solid #8b4513;
+            border-bottom: 1px solid #8b4513;
+        }
+        /* 棋盘格子 */
+        .cell {
+            width: 42px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f5f0e1;
+            position: relative;
+            cursor: pointer;
+            z-index: 2;
+        }
+        /* 行营样式（圆形标记） */
+        .cell.camp {
+            background: #ffebcd;
+        }
+        .cell.camp::after {
+            content: '';
+            position: absolute;
+            width: 38px;
+            height: 38px;
+            border: 2px solid #ff8c00;
+            border-radius: 50%;
+            z-index: 3;
+        }
+        /* 大本营样式（特殊标记） */
+        .cell.base {
+            background: #fff0f0;
+            border: 2px solid #ff0000;
+        }
+        .cell.base::before {
+            content: '营';
+            position: absolute;
+            font-size: 14px;
+            color: #ff0000;
+            font-weight: bold;
+            z-index: 3;
+        }
+        /* 河界行隐藏 */
+        .cell.river-cell {
+            visibility: hidden;
+        }
+        /* 铁路线条（标准军棋铁路网） */
+        .chessboard::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+            /* 横向铁路：行1、3、8、10 */
+            background: 
+                linear-gradient(#8b4513, #8b4513) 0 calc(42px*1) / 100% 2px,
+                linear-gradient(#8b4513, #8b4513) 0 calc(42px*3) / 100% 2px,
+                linear-gradient(#8b4513, #8b4513) 0 calc(42px*8) / 100% 2px,
+                linear-gradient(#8b4513, #8b4513) 0 calc(42px*10) / 100% 2px,
+                /* 纵向铁路：列1、3、5、7、9 */
+                linear-gradient(#8b4513, #8b4513) calc(42px*1) 0 / 2px 100%,
+                linear-gradient(#8b4513, #8b4513) calc(42px*3) 0 / 2px 100%,
+                linear-gradient(#8b4513, #8b4513) calc(42px*5) 0 / 2px 100%,
+                linear-gradient(#8b4513, #8b4513) calc(42px*7) 0 / 2px 100%,
+                linear-gradient(#8b4513, #8b4513) calc(42px*9) 0 / 2px 100%;
+            background-repeat: no-repeat;
+        }
+        /* 棋子样式 */
+        .piece {
+            width: 38px;
+            height: 38px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: grab;
+            box-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            user-select: none;
+            z-index: 4;
+        }
+        .piece:active {
+            cursor: grabbing;
+            transform: scale(0.95);
+        }
+        .piece.red {
+            background: #ff4444;
+            color: #fff;
+            border: 1px solid #cc0000;
+        }
+        .piece.blue {
+            background: #4444ff;
+            color: #fff;
+            border: 1px solid #0000cc;
+        }
+        .piece.selected {
+            border: 2px solid #ffff00;
+            box-shadow: 0 0 10px #ffff00;
+        }
+        /* 操作面板 */
+        .control {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        .btn {
+            padding: 8px 20px;
+            background: #8b4513;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .btn:hover {
+            background: #a0522d;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 8px 20px;
+            background: #fff;
+            border: 2px solid #8b4513;
+            border-radius: 4px;
+            font-size: 16px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <h1 class="title">军棋游戏（标准棋盘）</h1>
+    
+    <!-- 棋盘容器 -->
+    <div class="board-wrapper">
+        <div class="chessboard" id="chessboard"></div>
+        <div class="river">楚 河 汉 界</div>
+    </div>
+    
+    <!-- 操作面板 -->
+    <div class="control">
+        <button class="btn" id="resetBtn">重置游戏</button>
+        <button class="btn" id="regretBtn">悔棋</button>
+        <div class="status" id="status">游戏中：红方回合</div>
+    </div>
+
+    <script>
+        // 1. 标准棋盘配置（核心：行营、大本营位置）
+        const BOARD_CONFIG = {
+            // 行营位置 [行,列]（蓝5个+红5个）
+            camps: [
+                [1,3], [1,7], [3,1], [3,5], [3,9],  // 蓝方行营
+                [8,3], [8,7], [10,1], [10,5], [10,9] // 红方行营
+            ],
+            // 大本营位置 [行,列]（蓝1个+红1个）
+            bases: [
+                [0,4],  // 蓝方大本营（军旗位）
+                [11,4]  // 红方大本营（军旗位）
+            ],
+            // 河界行
+            riverRows: [5,6],
+            // 棋子等级（用于吃子判定）
+            pieceLevels: {
+                '军旗': 0, '地雷': 0, '炸弹': 0,
+                '工兵': 1, '排长': 2, '连长': 3, '营长': 4,
+                '团长': 5, '旅长': 6, '师长': 7, '军长': 8, '司令': 9
+            },
+            // 初始棋子布局（简化版，保证基础功能）
+            initPieces: {
+                blue: [
+                    {pos: [0,4], type: '军旗'}, // 蓝方军旗（大本营）
+                    {pos: [0,0], type: '地雷'}, {pos: [0,9], type: '地雷'}, {pos: [2,4], type: '地雷'},
+                    {pos: [1,1], type: '炸弹'}, {pos: [1,9], type: '炸弹'},
+                    {pos: [0,1], type: '司令'}, {pos: [0,2], type: '军长'}, {pos: [0,3], type: '师长'},
+                    {pos: [0,5], type: '旅长'}, {pos: [0,6], type: '团长'}, {pos: [0,7], type: '营长'},
+                    {pos: [0,8], type: '连长'}, {pos: [1,0], type: '排长'}, {pos: [1,2], type: '工兵'},
+                    {pos: [1,4], type: '工兵'}, {pos: [1,6], type: '工兵'}, {pos: [1,8], type: '排长'},
+                    {pos: [2,0], type: '连长'}, {pos: [2,1], type: '营长'}, {pos: [2,2], type: '团长'},
+                    {pos: [2,3], type: '旅长'}, {pos: [2,5], type: '师长'}, {pos: [2,6], type: '军长'},
+                    {pos: [2,7], type: '司令'}, {pos: [2,8], type: '连长'}, {pos: [2,9], type: '排长'}
+                ],
+                red: [
+                    {pos: [11,4], type: '军旗'}, // 红方军旗（大本营）
+                    {pos: [11,0], type: '地雷'}, {pos: [11,9], type: '地雷'}, {pos: [9,4], type: '地雷'},
+                    {pos: [10,1], type: '炸弹'}, {pos: [10,9], type: '炸弹'},
+                    {pos: [11,1], type: '司令'}, {pos: [11,2], type: '军长'}, {pos: [11,3], type: '师长'},
+                    {pos: [11,5], type: '旅长'}, {pos: [11,6], type: '团长'}, {pos: [11,7], type: '营长'},
+                    {pos: [11,8], type: '连长'}, {pos: [10,0], type: '排长'}, {pos: [10,2], type: '工兵'},
+                    {pos: [10,4], type: '工兵'}, {pos: [10,6], type: '工兵'}, {pos: [10,8], type: '排长'},
+                    {pos: [9,0], type: '连长'}, {pos: [9,1], type: '营长'}, {pos: [9,2], type: '团长'},
+                    {pos: [9,3], type: '旅长'}, {pos: [9,5], type: '师长'}, {pos: [9,6], type: '军长'},
+                    {pos: [9,7], type: '司令'}, {pos: [9,8], type: '连长'}, {pos: [9,9], type: '排长'}
+                ]
+            }
+        };
+
+        // 2. 全局状态
+        let chessboard = []; // 棋盘数据：[行][列] = {color, type, level}
+        let selectedPiece = null; // 选中的棋子 {row, col}
+        let currentPlayer = 'red'; // 当前回合：red/blue
+        let gameOver = false; // 游戏是否结束
+        const statusEl = document.getElementById('status');
+
+        // 3. 初始化棋盘（核心：精准绘制行营、大本营）
+        function initBoard() {
+            const boardEl = document.getElementById('chessboard');
+            boardEl.innerHTML = '';
+            // 初始化12行×10列的棋盘数据
+            chessboard = Array(12).fill().map(() => Array(10).fill(null));
+
+            // 生成棋盘格子
+            for (let row = 0; row < 12; row++) {
+                for (let col = 0; col < 10; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+
+                    // 标记行营
+                    if (BOARD_CONFIG.camps.some(([r,c]) => r === row && c === col)) {
+                        cell.classList.add('camp');
+                    }
+
+                    // 标记大本营
+                    if (BOARD_CONFIG.bases.some(([r,c]) => r === row && c === col)) {
+                        cell.classList.add('base');
+                    }
+
+                    // 标记河界行（隐藏格子）
+                    if (BOARD_CONFIG.riverRows.includes(row)) {
+                        cell.classList.add('river-cell');
+                    }
+
+                    // 绑定格子点击事件
+                    cell.addEventListener('click', handleCellClick);
+                    boardEl.appendChild(cell);
+                }
+            }
+
+            // 初始化蓝方棋子
+            BOARD_CONFIG.initPieces.blue.forEach(item => {
+                const [row, col] = item.pos;
+                chessboard[row][col] = {
+                    color: 'blue',
+                    type: item.type,
+                    level: BOARD_CONFIG.pieceLevels[item.type]
+                };
+                renderPiece(row, col);
+            });
+
+            // 初始化红方棋子
+            BOARD_CONFIG.initPieces.red.forEach(item => {
+                const [row, col] = item.pos;
+                chessboard[row][col] = {
+                    color: 'red',
+                    type: item.type,
+                    level: BOARD_CONFIG.pieceLevels[item.type]
+                };
+                renderPiece(row, col);
+            });
+
+            updateStatus('游戏中：红方回合');
+            gameOver = false;
+        }
+
+        // 4. 渲染棋子
+        function renderPiece(row, col) {
+            // 跳过河界行
+            if (BOARD_CONFIG.riverRows.includes(row)) return;
+            
+            const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+            if (!cell) return;
+            
+            cell.innerHTML = '';
+            const piece = chessboard[row][col];
+            if (!piece) return;
+
+            const pieceEl = document.createElement('div');
+            pieceEl.className = `piece ${piece.color}`;
+            pieceEl.textContent = piece.type;
+            pieceEl.dataset.row = row;
+            pieceEl.dataset.col = col;
+
+            // 绑定棋子选中事件
+            pieceEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectPiece(row, col);
+            });
+
+            cell.appendChild(pieceEl);
+        }
+
+        // 5. 选中棋子（基础规则：只能选己方、非地雷/军旗）
+        function selectPiece(row, col) {
+            if (gameOver) return;
+            
+            const piece = chessboard[row][col];
+            // 非己方棋子不能选
+            if (!piece || piece.color !== currentPlayer) {
+                updateStatus(`只能选中${currentPlayer === 'red' ? '红' : '蓝'}方棋子`);
+                return;
+            }
+
+            // 取消之前选中的棋子
+            if (selectedPiece) {
+                const oldPiece = document.querySelector(`.piece[data-row="${selectedPiece.row}"][data-col="${selectedPiece.col}"]`);
+                if (oldPiece) oldPiece.classList.remove('selected');
+            }
+
+            // 地雷/军旗不可移动
+            if (piece.type === '地雷' || piece.type === '军旗') {
+                updateStatus(`${piece.type}不可移动`);
+                selectedPiece = null;
+                return;
+            }
+
+            // 选中当前棋子
+            selectedPiece = { row, col };
+            const currentPiece = document.querySelector(`.piece[data-row="${row}"][data-col="${col}"]`);
+            if (currentPiece) currentPiece.classList.add('selected');
+            updateStatus(`已选中：${piece.type}，点击目标位置移动`);
+        }
+
+        // 6. 处理格子点击（移动棋子）
+        function handleCellClick(e) {
+            if (gameOver || !selectedPiece) return;
+            
+            const targetRow = parseInt(e.target.dataset.row);
+            const targetCol = parseInt(e.target.dataset.col);
+            const sourceRow = selectedPiece.row;
+            const sourceCol = selectedPiece.col;
+
+            // 跳过河界行
+            if (BOARD_CONFIG.riverRows.includes(targetRow)) return;
+
+            // 检查移动合法性（基础：上下左右1格）
+            if (!isValidMove(sourceRow, sourceCol, targetRow, targetCol)) {
+                updateStatus('移动不合法！只能上下左右移动1格');
+                return;
+            }
+
+            // 执行移动/吃子
+            movePiece(sourceRow, sourceCol, targetRow, targetCol);
+        }
+
+        // 7. 移动合法性检查（基础规则）
+        function isValidMove(sRow, sCol, tRow, tCol) {
+            // 同一位置
+            if (sRow === tRow && sCol === tCol) return false;
+            
+            // 基础移动：上下左右1格
+            const rowDiff = Math.abs(sRow - tRow);
+            const colDiff = Math.abs(sCol - tCol);
+            return (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
+        }
+
+        // 8. 移动棋子+吃子判定（核心功能）
+        function movePiece(sRow, sCol, tRow, tCol) {
+            const sourcePiece = chessboard[sRow][sCol];
+            const targetPiece = chessboard[tRow][tCol];
+
+            // 目标无棋子：直接移动
+            if (!targetPiece) {
+                chessboard[tRow][tCol] = sourcePiece;
+                chessboard[sRow][sCol] = null;
+                renderPiece(sRow, sCol);
+                renderPiece(tRow, tCol);
+                switchPlayer();
+                return;
+            }
+
+            // 目标是己方棋子：不能移动
+            if (targetPiece.color === sourcePiece.color) {
+                updateStatus('不能移动到己方棋子位置');
+                return;
+            }
+
+            // 目标是敌方棋子：判定吃子
+            const battle = judgeBattle(sourcePiece, targetPiece);
+            updateStatus(battle.msg);
+
+            // 处理吃子结果
+            if (battle.winner === 'source') {
+                // 己方赢：替换敌方棋子
+                if (targetPiece.type === '军旗') {
+                    gameOver = true;
+                    updateStatus(`${currentPlayer === 'red' ? '红' : '蓝'}方获胜！吃掉敌方军旗`);
+                }
+                chessboard[tRow][tCol] = sourcePiece;
+                chessboard[sRow][sCol] = null;
+            } else if (battle.winner === 'target') {
+                // 敌方赢：己方棋子被吃
+                chessboard[sRow][sCol] = null;
+            } else {
+                // 同归于尽
+                chessboard[sRow][sCol] = null;
+                chessboard[tRow][tCol] = null;
+            }
+
+            // 重新渲染
+            renderPiece(sRow, sCol);
+            renderPiece(tRow, tCol);
+
+            // 切换回合（未结束时）
+            if (!gameOver) {
+                switchPlayer();
+            }
+        }
+
+        // 9. 吃子规则判定
+        function judgeBattle(source, target) {
+            // 炸弹：同归于尽
+            if (source.type === '炸弹') {
+                return { winner: 'draw', msg: `炸弹与${target.type}同归于尽` };
+            }
+            if (target.type === '炸弹') {
+                return { winner: 'draw', msg: `${source.type}被炸弹炸掉` };
+            }
+
+            // 工兵排雷
+            if (source.type === '工兵' && target.type === '地雷') {
+                return { winner: 'source', msg: `工兵排掉地雷` };
+            }
+
+            // 地雷：除工兵外，其他棋子踩雷输
+            if (target.type === '地雷') {
+                return { winner: 'target', msg: `${source.type}踩地雷被消灭` };
+            }
+
+            // 军旗：直接获胜
+            if (target.type === '军旗') {
+                return { winner: 'source', msg: '吃掉军旗！获胜' };
+            }
+
+            // 普通棋子：等级高的赢
+            if (source.level > target.level) {
+                return { winner: 'source', msg: `${source.type}吃掉${target.type}` };
+            } else if (source.level < target.level) {
+                return { winner: 'target', msg: `${source.type}被${target.type}吃掉` };
+            } else {
+                return { winner: 'draw', msg: `${source.type}与${target.type}同归于尽` };
+            }
+        }
+
+        // 10. 辅助函数
+        function switchPlayer() {
+            currentPlayer = currentPlayer === 'red' ? 'blue' : 'red';
+            selectedPiece = null;
+            // 取消选中样式
+            document.querySelectorAll('.piece.selected').forEach(el => el.classList.remove('selected'));
+            updateStatus(`游戏中：${currentPlayer === 'red' ? '红' : '蓝'}方回合`);
+        }
+
+        function updateStatus(msg) {
+            statusEl.textContent = msg;
+        }
+
+        function regret() {
+            if (gameOver) return;
+            selectedPiece = null;
+            document.querySelectorAll('.piece.selected').forEach(el => el.classList.remove('selected'));
+            updateStatus('已悔棋，重新选择棋子');
+        }
+
+        // 绑定按钮事件
+        document.getElementById('resetBtn').addEventListener('click', initBoard);
+        document.getElementById('regretBtn').addEventListener('click', regret);
+
+        // 初始化游戏
+        window.onload = initBoard;
+    </script>
+</body>
+</html>

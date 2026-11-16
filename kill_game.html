@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>军棋陆战棋</title>
+    <style>
+        /* 全局样式 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft Yahei", Arial, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        .game-container {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+        
+        /* 棋盘样式 */
+        #chessBoard {
+            border: 3px solid #8b4513;
+            background-color: #8bc34a;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        /* 控制面板 */
+        #controlPanel {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 200px;
+        }
+        
+        #controlPanel h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+        
+        .control-btn {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        
+        .control-btn:hover {
+            background-color: #45a049;
+        }
+        
+        #status {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        /* 规则面板 */
+        #rules {
+            margin-top: 20px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            text-align: left;
+        }
+        
+        #rules h2 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        #rules p {
+            margin-bottom: 10px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <h1>军棋陆战棋</h1>
+    
+    <div class="game-container">
+        <!-- 棋盘 -->
+        <canvas id="chessBoard" width="400" height="820"></canvas>
+        
+        <!-- 控制面板 -->
+        <div id="controlPanel">
+            <h2>游戏控制</h2>
+            <button class="control-btn" id="newGame">新游戏</button>
+            <button class="control-btn" id="reset">重置</button>
+            <div id="status">当前回合：红方</div>
+        </div>
+    </div>
+    
+    <!-- 规则面板 -->
+    <div id="rules">
+        <h2>游戏规则</h2>
+        <p><strong>基本规则：</strong></p>
+        <p>• 棋盘：12行5列，每方有2个大本营、5个行营</p>
+        <p>• 棋子：每方25个棋子，包括军旗、司令、军长、师长(2)、旅长(2)、团长(2)、营长(2)、连长(3)、排长(3)、工兵(3)、炸弹(2)、地雷(3)</p>
+        <p>• 吃子规则：司令>军长>师长>旅长>团长>营长>连长>排长>工兵，相同棋子同归于尽</p>
+        
+        <p><strong>特殊规则：</strong></p>
+        <p>• 炸弹：与任何棋子同归于尽</p>
+        <p>• 地雷：只能被工兵或炸弹清除，其他棋子碰到会被吃</p>
+        <p>• 军旗：只能放在大本营，被吃掉则游戏结束</p>
+        <p>• 行营：棋子在营内不会被攻击，每次只能移动一步</p>
+        <p>• 铁路线：棋子在铁路线上可以快速移动，工兵可以拐弯</p>
+        
+        <p><strong>操作方法：</strong></p>
+        <p>• 点击棋子选中，再点击目标位置移动</p>
+        <p>• 只能移动当前回合玩家的棋子</p>
+        <p>• 红色代表玩家，黑色代表电脑</p>
+    </div>
+    
+    <script>
+        // 全局变量
+        let board = []; // 12行5列的棋盘
+        let currentPlayer = 'red'; // 当前玩家
+        let selectedPiece = null; // 选中的棋子
+        let gameState = 'playing'; // 游戏状态
+        let computerThinking = false; // 电脑是否正在思考
+        
+        // 棋子等级
+        const pieceLevels = {
+            '军旗': -2,
+            '地雷': 0,
+            '工兵': 1,
+            '排长': 2,
+            '连长': 3,
+            '营长': 4,
+            '团长': 5,
+            '旅长': 6,
+            '师长': 7,
+            '军长': 8,
+            '司令': 9,
+            '炸弹': -1
+        };
+        
+        // 根据用户提供的棋盘重新定义行营位置
+        const camps = [
+            [2, 4], [1, 3], [3, 3], [1, 1], [3, 1], // 黑方行营（上方）
+            [2, 7], [1, 8], [3, 8], [1, 10], [3, 10] // 红方行营（下方）
+        ];
+        
+        // 重新定义大本营位置
+        const headquarters = [
+            [1, 0], [3, 0], // 黑方大本营（上方）
+            [1, 11], [3, 11] // 红方大本营（下方）
+        ];
+        
+        // 初始化游戏
+        function initGame() {
+            // 创建12行5列的棋盘
+            board = Array(12).fill().map(() => Array(5).fill(null));
+            
+            // 设置红方棋子
+            setupRedPieces();
+            
+            // 设置黑方棋子
+            setupBlackPieces();
+            
+            // 绘制棋盘
+            drawBoard();
+            
+            // 更新状态
+            updateStatus('当前回合：红方');
+            
+            gameState = 'playing';
+            selectedPiece = null;
+            computerThinking = false;
+        }
+        
+        // 设置红方棋子（下方）
+        function setupRedPieces() {
+            // 红方棋子布局（避免行营位置）
+            const redPieces = [
+                {type: '军旗', x: 1, y: 11}, // 军旗放在大本营
+                {type: '司令', x: 3, y: 11}, // 司令放在大本营
+                {type: '军长', x: 0, y: 11},
+                {type: '师长', x: 2, y: 11},
+                {type: '师长', x: 4, y: 11},
+                {type: '旅长', x: 0, y: 10},
+                {type: '旅长', x: 4, y: 10},
+                {type: '团长', x: 0, y: 9},
+                {type: '团长', x: 4, y: 9},
+                {type: '营长', x: 0, y: 8},
+                {type: '营长', x: 4, y: 8},
+                {type: '连长', x: 0, y: 7},
+                {type: '连长', x: 4, y: 7},
+                {type: '连长', x: 0, y: 6},
+                {type: '排长', x: 4, y: 6},
+                {type: '排长', x: 0, y: 5},
+                {type: '排长', x: 4, y: 5},
+                {type: '工兵', x: 1, y: 9},
+                {type: '工兵', x: 3, y: 9},
+                {type: '工兵', x: 2, y: 8},
+                {type: '炸弹', x: 2, y: 10},
+                {type: '炸弹', x: 2, y: 9},
+                {type: '地雷', x: 0, y: 4},
+                {type: '地雷', x: 2, y: 7},
+                {type: '地雷', x: 4, y: 4}
+            ];
+            
+            // 放置红方棋子
+            redPieces.forEach(piece => {
+                board[piece.y][piece.x] = {
+                    type: piece.type,
+                    color: 'red',
+                    revealed: true
+                };
+            });
+        }
+        
+        // 设置黑方棋子（上方）
+        function setupBlackPieces() {
+            // 黑方棋子布局（避免行营位置）
+            const blackPieces = [
+                {type: '军旗', x: 1, y: 0}, // 军旗放在大本营
+                {type: '司令', x: 3, y: 0}, // 司令放在大本营
+                {type: '军长', x: 0, y: 0},
+                {type: '师长', x: 2, y: 0},
+                {type: '师长', x: 4, y: 0},
+                {type: '旅长', x: 0, y: 1},
+                {type: '旅长', x: 4, y: 1},
+                {type: '团长', x: 0, y: 2},
+                {type: '团长', x: 4, y: 2},
+                {type: '营长', x: 0, y: 3},
+                {type: '营长', x: 4, y: 3},
+                {type: '连长', x: 0, y: 4},
+                {type: '连长', x: 4, y: 4},
+                {type: '连长', x: 0, y: 5},
+                {type: '排长', x: 4, y: 5},
+                {type: '排长', x: 0, y: 6},
+                {type: '排长', x: 4, y: 6},
+                {type: '工兵', x: 1, y: 3},
+                {type: '工兵', x: 3, y: 3},
+                {type: '工兵', x: 2, y: 4},
+                {type: '炸弹', x: 2, y: 1},
+                {type: '炸弹', x: 2, y: 2},
+                {type: '地雷', x: 1, y: 1},
+                {type: '地雷', x: 3, y: 1},
+                {type: '地雷', x: 2, y: 3}
+            ];
+            
+            // 放置黑方棋子
+            blackPieces.forEach(piece => {
+                board[piece.y][piece.x] = {
+                    type: piece.type,
+                    color: 'black',
+                    revealed: false
+                };
+            });
+        }
+        
+        // 绘制棋盘
+        function drawBoard() {
+            const canvas = document.getElementById('chessBoard');
+            const ctx = canvas.getContext('2d');
+            const cellSize = 60;
+            const offsetX = 20;
+            const offsetY = 20;
+            
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制背景
+            ctx.fillStyle = '#8bc34a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制网格线
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            
+            // 横线（13条，对应12行交叉点）
+            for (let y = 0; y <= 12; y++) {
+                ctx.beginPath();
+                ctx.moveTo(offsetX, offsetY + y * cellSize);
+                ctx.lineTo(offsetX + 5 * cellSize, offsetY + y * cellSize);
+                ctx.stroke();
+            }
+            
+            // 竖线（6条，对应5列交叉点）
+            for (let x = 0; x <= 5; x++) {
+                ctx.beginPath();
+                ctx.moveTo(offsetX + x * cellSize, offsetY);
+                ctx.lineTo(offsetX + x * cellSize, offsetY + 12 * cellSize);
+                ctx.stroke();
+            }
+            
+            // 绘制铁路线（根据用户提供的棋盘）
+            ctx.strokeStyle = '#8B0000';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([10, 5]);
+            
+            // 横向铁路线（第0、2、4、6、8、10、12行）
+            for (let y = 0; y <= 12; y += 2) {
+                ctx.beginPath();
+                ctx.moveTo(offsetX, offsetY + y * cellSize);
+                ctx.lineTo(offsetX + 5 * cellSize, offsetY + y * cellSize);
+                ctx.stroke();
+            }
+            
+            // 纵向铁路线（列0、2、4）
+            for (let x = 0; x <= 4; x += 2) {
+                ctx.beginPath();
+                ctx.moveTo(offsetX + x * cellSize, offsetY);
+                ctx.lineTo(offsetX + x * cellSize, offsetY + 12 * cellSize);
+                ctx.stroke();
+            }
+            ctx.setLineDash([]);
+            
+            // 绘制行营（4399军棋的5个行营位置）
+            ctx.fillStyle = '#4682B4';
+            camps.forEach(camp => {
+                const x = offsetX + camp[0] * cellSize;
+                const y = offsetY + camp[1] * cellSize;
+                
+                ctx.beginPath();
+                ctx.arc(x, y, cellSize / 3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.stroke();
+            });
+            
+            // 绘制大本营
+            ctx.fillStyle = '#8B0000';
+            headquarters.forEach(hq => {
+                const x = offsetX + hq[0] * cellSize;
+                const y = offsetY + hq[1] * cellSize;
+                
+                ctx.beginPath();
+                ctx.moveTo(x, y - cellSize / 4);
+                ctx.lineTo(x + cellSize / 4, y);
+                ctx.lineTo(x, y + cellSize / 4);
+                ctx.lineTo(x - cellSize / 4, y);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.stroke();
+            });
+            
+            // 绘制棋子
+            for (let y = 0; y < 12; y++) {
+                for (let x = 0; x < 5; x++) {
+                    const piece = board[y][x];
+                    if (piece) {
+                        drawPiece(ctx, piece, x, y, offsetX, offsetY, cellSize);
+                    }
+                }
+            }
+            
+            // 绘制选中效果
+            if (selectedPiece) {
+                const x = offsetX + selectedPiece.x * cellSize;
+                const y = offsetY + selectedPiece.y * cellSize;
+                
+                ctx.strokeStyle = '#ffff00';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.arc(x, y, cellSize / 2, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        }
+        
+        // 绘制棋子（4399军棋风格）
+        function drawPiece(ctx, piece, x, y, offsetX, offsetY, cellSize) {
+            const centerX = offsetX + x * cellSize;
+            const centerY = offsetY + y * cellSize;
+            
+            // 棋子大小（立着的长方形）
+            const pieceWidth = cellSize - 10;
+            const pieceHeight = cellSize - 5;
+            
+            // 创建渐变背景（4399军棋风格）
+            const gradient = ctx.createLinearGradient(centerX - pieceWidth / 2, centerY - pieceHeight / 2, centerX - pieceWidth / 2, centerY + pieceHeight / 2);
+            
+            if (!piece.revealed && piece.color === 'black') {
+                // 未揭示的黑方棋子
+                gradient.addColorStop(0, '#555');
+                gradient.addColorStop(1, '#222');
+            } else {
+                // 已揭示的棋子
+                if (piece.color === 'red') {
+                    gradient.addColorStop(0, '#ffe6e6');
+                    gradient.addColorStop(1, '#ffcccc');
+                } else {
+                    gradient.addColorStop(0, '#f0f0f0');
+                    gradient.addColorStop(1, '#e0e0e0');
+                }
+            }
+            
+            // 绘制棋子主体
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.roundRect(centerX - pieceWidth / 2, centerY - pieceHeight / 2, pieceWidth, pieceHeight, 8);
+            ctx.fill();
+            
+            // 绘制棋子边框
+            ctx.strokeStyle = piece.color === 'red' ? '#ff0000' : '#000000';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // 绘制棋子文字
+            if (piece.revealed || piece.color === 'red') {
+                ctx.fillStyle = piece.color === 'red' ? '#ff0000' : '#000000';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(piece.type, centerX, centerY);
+            } else {
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 24px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('?', centerX, centerY);
+            }
+        }
+        
+        // 判断是否是行营
+        function isCamp(x, y) {
+            return camps.some(camp => camp[0] === x && camp[1] === y);
+        }
+        
+        // 判断是否是铁路线
+        function isRailway(x, y) {
+            // 铁路线是所有横向偶数行和纵向的0、2、4列
+            return (y % 2 === 0) || (x % 2 === 0);
+        }
+        
+        // 判断是否是大本营
+        function isHeadquarters(x, y) {
+            return headquarters.some(hq => hq[0] === x && hq[1] === y);
+        }
+        
+        // 判断路径是否畅通
+        function isPathClear(fromX, fromY, toX, toY) {
+            if (fromX === toX) {
+                // 纵向移动（同列）
+                const minY = Math.min(fromY, toY);
+                const maxY = Math.max(fromY, toY);
+                for (let y = minY + 1; y < maxY; y++) {
+                    if (board[y][fromX] !== null) {
+                        return false;
+                    }
+                }
+                return true;
+            } else if (fromY === toY) {
+                // 横向移动（同行）
+                const minX = Math.min(fromX, toX);
+                const maxX = Math.max(fromX, toX);
+                for (let x = minX + 1; x < maxX; x++) {
+                    if (board[fromY][x] !== null) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            return false;
+        }
+        
+        // 判断移动是否有效
+        function isValidMove(fromX, fromY, toX, toY) {
+            const piece = board[fromY][fromX];
+            const target = board[toY][toX];
+            
+            // 检查目标位置是否有己方棋子
+            if (target && target.color === piece.color) {
+                return false;
+            }
+            
+            // 检查是否是地雷或军旗
+            if (piece.type === '地雷' || piece.type === '军旗') {
+                return false;
+            }
+            
+            // 检查是否在大本营移动
+            if (isHeadquarters(fromX, fromY) && piece.color === currentPlayer) {
+                return false;
+            }
+            
+            // 计算移动距离
+            const dx = Math.abs(fromX - toX);
+            const dy = Math.abs(fromY - toY);
+            
+            // 行营移动规则：行营内的棋子只能移动一步
+            if (isCamp(fromX, fromY)) {
+                if (dx + dy !== 1) {
+                    return false;
+                }
+                return true;
+            }
+            
+            // 检查是否在铁路线上移动
+            const isFromRailway = isRailway(fromX, fromY);
+            const isToRailway = isRailway(toX, toY);
+            
+            if (isFromRailway && isToRailway) {
+                // 铁路线移动规则
+                if (fromX === toX) {
+                    // 纵向移动（同列）
+                    return isPathClear(fromX, fromY, toX, toY);
+                } else if (fromY === toY) {
+                    // 横向移动（同行）
+                    return isPathClear(fromX, fromY, toX, toY);
+                } else {
+                    // 拐弯移动（只有工兵可以）
+                    if (piece.type === '工兵') {
+                        // 检查是否可以通过中间点拐弯
+                        return isPathClear(fromX, fromY, fromX, toY) && isPathClear(fromX, toY, toX, toY) ||
+                               isPathClear(fromX, fromY, toX, fromY) && isPathClear(toX, fromY, toX, toY);
+                    }
+                }
+            } else {
+                // 非铁路线只能移动一步（公路线）
+                return (dx === 1 && dy === 0) || (dx === 0 && dy === 1);
+            }
+            
+            return false;
+        }
+        
+        // 处理棋子移动
+        function movePiece(fromX, fromY, toX, toY) {
+            const piece = board[fromY][fromX];
+            const target = board[toY][toX];
+            
+            // 如果目标位置有棋子，处理战斗
+            if (target) {
+                handleBattle(piece, target, fromX, fromY, toX, toY);
+            } else {
+                // 普通移动
+                board[toY][toX] = piece;
+                board[fromY][fromX] = null;
+            }
+            
+            // 清除选中
+            selectedPiece = null;
+            
+            // 绘制棋盘
+            drawBoard();
+            
+            // 检查游戏是否结束
+            if (checkGameOver()) {
+                return;
+            }
+            
+            // 切换玩家
+            currentPlayer = 'black';
+            updateStatus('当前回合：电脑');
+            
+            // 电脑移动
+            setTimeout(() => {
+                computerMove();
+            }, 1000);
+        }
+        
+        // 处理战斗
+        function handleBattle(attacker, defender, fromX, fromY, toX, toY) {
+            // 揭示敌方棋子（暗棋规则）
+            defender.revealed = true;
+            
+            // 炸弹逻辑：与任何棋子同归于尽
+            if (attacker.type === '炸弹' || defender.type === '炸弹') {
+                board[fromY][fromX] = null;
+                board[toY][toX] = null;
+                return;
+            }
+            
+            // 地雷逻辑
+            if (defender.type === '地雷') {
+                if (attacker.type === '工兵' || attacker.type === '炸弹') {
+                    // 工兵或炸弹可以排雷
+                    board[toY][toX] = attacker;
+                    board[fromY][fromX] = null;
+                } else {
+                    // 其他棋子踩雷被吃
+                    board[fromY][fromX] = null;
+                }
+                return;
+            }
+            
+            // 军旗逻辑
+            if (defender.type === '军旗') {
+                // 吃掉军旗，游戏结束
+                board[toY][toX] = attacker;
+                board[fromY][fromX] = null;
+                gameState = 'red_wins';
+                return;
+            }
+            
+            // 普通战斗（根据等级比较）
+            if (pieceLevels[attacker.type] > pieceLevels[defender.type]) {
+                // 攻击者获胜
+                board[toY][toX] = attacker;
+                board[fromY][fromX] = null;
+            } else if (pieceLevels[attacker.type] < pieceLevels[defender.type]) {
+                // 防御者获胜
+                board[fromY][fromX] = null;
+            } else {
+                // 相同棋子同归于尽
+                board[fromY][fromX] = null;
+                board[toY][toX] = null;
+            }
+        }
+        
+        // 电脑移动
+        function computerMove() {
+            if (gameState !== 'playing') {
+                return;
+            }
+            
+            // 收集所有可移动的黑方棋子
+            const moves = [];
+            for (let y = 0; y < 12; y++) {
+                for (let x = 0; x < 5; x++) {
+                    const piece = board[y][x];
+                    if (piece && piece.color === 'black' && piece.type !== '地雷' && piece.type !== '军旗') {
+                        // 尝试所有可能的移动
+                        for (let toY = 0; toY < 12; toY++) {
+                            for (let toX = 0; toX < 5; toX++) {
+                                if (isValidMove(x, y, toX, toY)) {
+                                    moves.push({fromX: x, fromY: y, toX: toX, toY: toY});
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // 如果没有可移动的棋子，游戏结束
+            if (moves.length === 0) {
+                gameState = 'red_wins';
+                updateStatus('电脑没有可移动的棋子，你赢了！');
+                return;
+            }
+            
+            // 随机选择一个移动
+            const randomMove = moves[Math.floor(Math.random() * moves.length)];
+            
+            // 执行移动
+            movePiece(randomMove.fromX, randomMove.fromY, randomMove.toX, randomMove.toY);
+            
+            // 切换回玩家回合
+            currentPlayer = 'red';
+            updateStatus('当前回合：红方');
+        }
+        
+        // 检查游戏是否结束
+        function checkGameOver() {
+            // 检查黑方军旗是否被吃掉
+            let blackFlagFound = false;
+            for (let y = 0; y < 12; y++) {
+                for (let x = 0; x < 5; x++) {
+                    const piece = board[y][x];
+                    if (piece && piece.type === '军旗' && piece.color === 'black') {
+                        blackFlagFound = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (!blackFlagFound) {
+                updateStatus('你赢了！吃掉了电脑的军旗！');
+                gameState = 'red_wins';
+                return true;
+            }
+            
+            // 检查红方军旗是否被吃掉
+            let redFlagFound = false;
+            for (let y = 0; y < 12; y++) {
+                for (let x = 0; x < 5; x++) {
+                    const piece = board[y][x];
+                    if (piece && piece.type === '军旗' && piece.color === 'red') {
+                        redFlagFound = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (!redFlagFound) {
+                updateStatus('电脑赢了！你的军旗被吃掉了！');
+                gameState = 'black_wins';
+                return true;
+            }
+            
+            // 检查红方是否没有可移动的棋子
+            let redMovable = false;
+            for (let y = 0; y < 12; y++) {
+                for (let x = 0; x < 5; x++) {
+                    const piece = board[y][x];
+                    if (piece && piece.color === 'red' && piece.type !== '地雷' && piece.type !== '军旗') {
+                        // 检查是否有可移动的位置
+                        for (let toY = 0; toY < 12; toY++) {
+                            for (let toX = 0; toX < 5; toX++) {
+                                if (isValidMove(x, y, toX, toY)) {
+                                    redMovable = true;
+                                    break;
+                                }
+                            }
+                            if (redMovable) break;
+                        }
+                        if (redMovable) break;
+                    }
+                }
+            }
+            
+            if (!redMovable) {
+                updateStatus('你没有可移动的棋子，电脑赢了！');
+                gameState = 'black_wins';
+                return true;
+            }
+            
+            return false;
+        }
+        
+        // 更新状态
+        function updateStatus(msg) {
+            document.getElementById('status').textContent = msg;
+        }
+        
+        // 处理棋盘点击
+        function handleBoardClick(event) {
+            if (gameState !== 'playing' || currentPlayer !== 'red') {
+                return;
+            }
+            
+            const canvas = document.getElementById('chessBoard');
+            const rect = canvas.getBoundingClientRect();
+            const cellSize = 60;
+            const offsetX = 20;
+            const offsetY = 20;
+            
+            // 计算点击位置
+            const clickX = event.clientX - rect.left;
+            const clickY = event.clientY - rect.top;
+            
+            // 转换为棋盘坐标（交叉点）
+            const x = Math.floor((clickX - offsetX + cellSize / 2) / cellSize);
+            const y = Math.floor((clickY - offsetY + cellSize / 2) / cellSize);
+            
+            // 检查坐标是否有效
+            if (x < 0 || x >= 5 || y < 0 || y >= 12) {
+                return;
+            }
+            
+            // 获取点击的棋子
+            const clickedPiece = board[y][x];
+            
+            // 如果没有选中棋子
+            if (selectedPiece === null) {
+                // 选中当前玩家的棋子
+                if (clickedPiece && clickedPiece.color === 'red' && clickedPiece.type !== '地雷' && clickedPiece.type !== '军旗') {
+                    selectedPiece = {x: x, y: y};
+                    drawBoard();
+                }
+            } else {
+                // 检查移动是否有效
+                if (isValidMove(selectedPiece.x, selectedPiece.y, x, y)) {
+                    // 执行移动
+                    movePiece(selectedPiece.x, selectedPiece.y, x, y);
+                } else {
+                    // 取消选中
+                    selectedPiece = null;
+                    drawBoard();
+                }
+            }
+        }
+        
+        // 事件监听
+        document.getElementById('chessBoard').addEventListener('click', handleBoardClick);
+        document.getElementById('newGame').addEventListener('click', initGame);
+        document.getElementById('reset').addEventListener('click', initGame);
+        
+        // 初始化游戏
+        initGame();
+    </script>
+</body>
+</html>
